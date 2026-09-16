@@ -17,12 +17,14 @@ bun run build        # production build → .output/ (static preset)
 bun run start        # serve the built output
 bun run preview      # vite preview
 
+bun run test         # engine tests (bun test, src/lib/sequence/*.test.ts)
 bun run gh-pages:deploy   # build with BASE_PATH=/sequence/ and publish to GitHub Pages
 ```
 
-There is no test suite or linter configured. Verify changes with `bun run
-build` and by playing a two-tab game (`bun run dev` in one tab, open the room
-link in a second tab/window).
+There is no linter configured. Verify changes with `bun run test` (covers the
+pure engine: reducer rules and the host's secret-validation mirror),
+`bun run build`, and by playing a two-tab game (`bun run dev` in one tab, open
+the room link in a second tab/window).
 
 ## Critical invariants — do not violate
 
