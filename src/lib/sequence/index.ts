@@ -56,6 +56,7 @@ export { SequenceSecrets, type SerializedSecrets } from "./secrets";
 export {
   cardToString,
   cardCellIndices,
+  cardsEqual,
   isDeadCard,
   isOneEyedJack,
   isTwoEyedJack,

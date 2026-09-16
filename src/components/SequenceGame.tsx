@@ -1,6 +1,13 @@
 import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import type { BoardCell, Card, ChipColor, SequenceState } from "~/lib/sequence";
-import { cardToString, cardCellIndices, isDeadCard, isOneEyedJack, isTwoEyedJack } from "~/lib/sequence";
+import {
+  cardToString,
+  cardCellIndices,
+  cardsEqual,
+  isDeadCard,
+  isOneEyedJack,
+  isTwoEyedJack,
+} from "~/lib/sequence";
 import TeamAvatar from "~/components/ui/TeamAvatar";
 import "./SequenceGame.css";
 
@@ -230,13 +237,46 @@ export default function SequenceGame(props: {
     return idx === null ? undefined : props.hand[idx];
   });
 
-  // Legal target cells for the locally selected card (own board only).
+  // Legal target cells on the own board. Two sources:
+  // - turnStep 'play': the locally selected hand card (the normal path).
+  // - turnStep 'place'/'remove': recovery for a lost or rejected chip
+  //   proposal. PLAY_CARD has already committed, the hand card is spent, but
+  //   pendingCard is public — so the legal targets can be recomputed from it
+  //   and the player can re-propose the chip action instead of deadlocking.
   const highlightCells = createMemo(() => {
     const targets = new Set<number>();
+    const st = s();
+    const board = st.board;
+    if (!myTurn()) return targets;
+
+    if (st.turnStep !== "play") {
+      const pending = st.pendingCard;
+      if (!pending) return targets;
+      if (st.turnStep === "place") {
+        if (isOneEyedJack(pending)) return targets;
+        board.forEach((cell, i) => {
+          if (cell.card === "FREE" || cell.chip) return;
+          if (isTwoEyedJack(pending) || cardsEqual(cell.card, pending)) {
+            targets.add(i);
+          }
+        });
+      } else if (st.turnStep === "remove") {
+        if (!isOneEyedJack(pending)) return targets;
+        board.forEach((cell, i) => {
+          if (
+            cell.chip &&
+            !cell.chip.locked &&
+            cell.chip.color !== myColor()
+          ) {
+            targets.add(i);
+          }
+        });
+      }
+      return targets;
+    }
+
     const card = selectedCard();
-    if (!card || !myTurn() || s().turnStep !== "play") return targets;
-    if (isDeadCard(s().board, card, myColor())) return targets;
-    const board = s().board;
+    if (!card || isDeadCard(board, card, myColor())) return targets;
     if (isTwoEyedJack(card)) {
       board.forEach((cell, i) => {
         if (cell.card !== "FREE" && !cell.chip) targets.add(i);
@@ -269,8 +309,8 @@ export default function SequenceGame(props: {
           ? "Click a highlighted space (or pick another card)"
           : "Your turn — play a card";
       }
-      if (st.turnStep === "place") return "Placing your chip…";
-      if (st.turnStep === "remove") return "Removing an opponent chip…";
+      if (st.turnStep === "place") return "Click a highlighted space to place your chip";
+      if (st.turnStep === "remove") return "Click a highlighted opponent chip to remove it";
       if (st.turnStep === "draw") return "Drawing a card…";
     }
     const steps: Record<string, string> = {
@@ -309,8 +349,19 @@ export default function SequenceGame(props: {
   }
 
   function cellClick(index: number) {
+    if (!myTurn() || !highlightCells().has(index)) return;
+    const st = s();
+    // Recovery path: re-propose the chip action for the already-committed
+    // pending card. A duplicate after a merely slow (not lost) proposal is
+    // rejected host-side — the turn will have moved past the chip step.
+    if (st.turnStep === "place" || st.turnStep === "remove") {
+      props.onPropose(st.turnStep === "place" ? "PLACE_CHIP" : "REMOVE_CHIP", {
+        cell: index,
+      });
+      return;
+    }
     const card = selectedCard();
-    if (!card || !myTurn() || !highlightCells().has(index)) return;
+    if (!card) return;
     // Commit the card and the chip action together — the turn machine
     // (play → place/remove → draw) processes the two proposals in order.
     props.onPropose("PLAY_CARD", { card, handIndex: selected() });
