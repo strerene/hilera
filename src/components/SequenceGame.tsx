@@ -9,9 +9,9 @@ import {
   isTwoEyedJack,
 } from "~/lib/sequence";
 import TeamAvatar from "~/components/ui/TeamAvatar";
+import PlayingCard from "~/components/ui/PlayingCard";
 import "./SequenceGame.css";
 
-const SUIT_GLYPH: Record<Card["suit"], string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const SUIT_RED: Record<Card["suit"], boolean> = { S: false, H: true, D: true, C: false };
 
 function cardTitle(card: Card): string {
@@ -64,12 +64,7 @@ function CellView(props: {
         keyed
         fallback={<span class="seq-free-glyph">✦</span>}
       >
-        {(card) => (
-          <span class="seq-cell-card">
-            {card.rank}
-            {SUIT_GLYPH[card.suit]}
-          </span>
-        )}
+        {(card) => <PlayingCard card={card} variant="square-small" />}
       </Show>
       <Show when={props.cell.chip} keyed>
         {(chip) => <span class={`seq-chip ${chip.color}`} classList={{ locked: chip.locked }} />}
@@ -106,10 +101,7 @@ function HandCardView(props: {
       }
       onClick={() => props.onSelect(props.index)}
     >
-      <span class="seq-hand-rank">{props.card.rank}</span>
-      <span class="seq-hand-suit">
-        {isTwoEyedJack(props.card) ? "👀" : isOneEyedJack(props.card) ? "👁" : SUIT_GLYPH[props.card.suit]}
-      </span>
+      <PlayingCard card={props.card} variant="full" />
       <Show when={props.dead}>
         <span class="seq-dead-tag">dead</span>
       </Show>

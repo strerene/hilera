@@ -179,7 +179,7 @@
 }
 
 .seq-cell.legal {
-    outline: 2px solid #44769e;
+    outline: 2px solid var(--color-primary);
     outline-offset: -2px;
     cursor: pointer;
 }
@@ -310,11 +310,11 @@
 }
 
 .seq-hand-card.playable:not(:disabled):hover {
-    border-color: #44769e;
+    border-color: var(--color-primary);;
 }
 
 .seq-hand-card.selected {
-    outline: 2px solid #44769e;
+    outline: 2px solid var(--color-primary);;
     transform: translateY(-4px);
 }
 
