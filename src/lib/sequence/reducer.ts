@@ -164,7 +164,7 @@ function drawCard(state: SequenceState, action: GameAction): SequenceState {
   if (state.turnStep !== "draw") return state;
   // The drawn card itself stays hidden: only public counts change here, and
   // the drawing player's hand is updated via a "hand" message.
-  let next = {
+  const next = {
     ...state,
     handCounts: bumpHandCount(state, action.playerId, 1),
     deckCount: state.deckCount - 1,
@@ -172,19 +172,23 @@ function drawCard(state: SequenceState, action: GameAction): SequenceState {
   if (state.deckCount <= 0) {
     // Deck exhausted: rebuild it from the PUBLIC discard piles (deterministic
     // for every replica — only the shuffled ORDER is host-side, in secrets).
-    // With nothing left to draw, the turn simply advances ("loss of card").
     const discardTotal = Object.values(state.discards).reduce(
       (n, p) => n + p.length,
       0,
     );
-    if (discardTotal === 0) return state;
+    if (discardTotal === 0) {
+      // No card exists anywhere (deck and discards empty): the turn still
+      // advances — a "loss of card" — because freezing on the draw step
+      // would deadlock the game. No hand or deck counts change.
+      return advanceTurn(state);
+    }
     const discards: SequenceState["discards"] = {};
     for (const seat of state.turnOrder) discards[seat] = [];
-    next = {
+    return advanceTurn({
       ...next,
       deckCount: discardTotal - 1,
       discards,
-    };
+    });
   }
   return advanceTurn(next);
 }

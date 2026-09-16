@@ -154,7 +154,11 @@ export class SequenceSecrets {
             (n, p) => n + p.length,
             0,
           );
-          if (discardTotal === 0) return null;
+          if (discardTotal === 0) {
+            // Mirror the reducer's "loss of card": no card exists anywhere,
+            // so no secret changes — the public state just advances the turn.
+            return { payload: {} };
+          }
           this.reshuffle(state.discards);
         }
         const card = this.drawInto(playerId);
