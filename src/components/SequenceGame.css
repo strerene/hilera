@@ -198,8 +198,26 @@
     }
 }
 
+/* The PlayingCard face is opaque and covers the whole cell, so animating the
+   cell background is only visible on FREE corners (which render a glyph
+   instead of a card). Cells with chips get the flash as a gold ring on the
+   chip itself — chips paint on top of the card face. Every flashed chip is
+   freshly locked, so its inset gold ring is part of the keyframes. */
+@keyframes seq-flash-chip {
+    50% {
+        box-shadow:
+            0 0 0 5px rgba(255, 215, 0, 0.85),
+            0 1px 2px rgba(0, 0, 0, 0.35),
+            inset 0 0 0 2px rgba(255, 215, 0, 0.9);
+    }
+}
+
 .seq-cell.sequence-flash {
     animation: seq-flash 0.7s ease-in-out 3;
+}
+
+.seq-cell.sequence-flash .seq-chip {
+    animation: seq-flash-chip 0.7s ease-in-out 3;
 }
 
 /* One-shot hint for the opponent's last move: a short pulse of the chip
@@ -213,9 +231,14 @@
     }
 }
 
+/* Chip removal: there is no chip to pulse, and the opaque card face hides a
+   background animation — glow around the cell instead (box-shadow paints
+   outside the cell, on top of the board). */
 @keyframes seq-last-move-cell {
     50% {
-        background: rgba(255, 215, 0, 0.45);
+        box-shadow:
+            0 0 0 5px rgba(255, 215, 0, 0.6),
+            inset 0 0 0 1px rgba(0, 0, 0, 0.08);
     }
 }
 
