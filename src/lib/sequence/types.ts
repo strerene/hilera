@@ -46,13 +46,12 @@ export interface SequenceLine {
 export type Phase = "lobby" | "playing" | "finished";
 
 /**
- * One turn is a strict machine enforced by the reducer:
- *   'play'   -> PLAY_CARD (or one DECLARE_DEAD_CARD first)
- *   'place'  -> PLACE_CHIP (normal card or two-eyed jack)
- *   'remove' -> REMOVE_CHIP (one-eyed jack)
- *   'draw'   -> DRAW_CARD (card itself stays hidden; only counts change)
+ * A turn is ONE atomic action committed by the reducer: the played card, the
+ * chip (placement or one-eyed-jack removal) and the mandatory follow-up draw
+ * land in a single state transition. Intermediate turn states never exist in
+ * the public state, so a replica can never observe — or get stuck in — a
+ * half-made turn.
  */
-export type TurnStep = "play" | "place" | "remove" | "draw";
 
 export interface PlayerInfo {
   name: string;
@@ -74,9 +73,7 @@ export interface SequenceState {
   sequences: SequenceLine[]; // claimed sequences (their chips are locked)
   currentPlayerId: string;
   turnNumber: number;
-  turnStep: TurnStep;
-  pendingCard: Card | null; // card played, awaiting chip placement/removal
-  deadCardExchanged: boolean; // one dead-card exchange allowed per turn
+  deadCardExchanged: boolean; // one dead-card exchange allowed per turn (does NOT end it)
   status?: { winner?: string; draw?: boolean };
 }
 
@@ -87,19 +84,16 @@ export const SEQUENCES_TO_WIN = 2; // 2-player game
 export const BOARD_SIZE = 10;
 
 // --- Actions ------------------------------------------------------------------
-// Only the five turn actions exist. Game setup is host-only code: the host
-// composes the initial playing state directly (seats, names and deal counts
-// are host facts), so there are no START_GAME / SHUFFLE_AND_DEAL actions.
-// All randomness (shuffle/deal results) is generated host-side and kept in
-// host-managed secrets — it NEVER appears in a broadcast payload. Actions
-// carry only public facts; hidden info (own hand) travels in "hand" messages.
+// Only two turn actions exist. MOVE is the whole turn (card + chip + draw) in
+// one proposal; DECLARE_DEAD_CARD swaps a dead card without ending the turn.
+// Game setup is host-only code: the host composes the initial playing state
+// directly (seats, names and deal counts are host facts), so there are no
+// START_GAME / SHUFFLE_AND_DEAL actions. All randomness (shuffle/deal results)
+// is generated host-side and kept in host-managed secrets — it NEVER appears
+// in a broadcast payload. Actions carry only public facts; hidden info (own
+// hand) travels in "hand" messages.
 
-export type SequenceActionType =
-  | "PLAY_CARD"
-  | "DECLARE_DEAD_CARD"
-  | "PLACE_CHIP"
-  | "REMOVE_CHIP"
-  | "DRAW_CARD";
+export type SequenceActionType = "MOVE" | "DECLARE_DEAD_CARD";
 
 export interface GameAction {
   type: SequenceActionType;

@@ -1,5 +1,6 @@
 // Tests for the pure rules machine. The reducer sees only public facts, so
 // every scenario here is fully deterministic — no secrets, no randomness.
+// A turn is ONE atomic MOVE: card + chip + draw in a single transition.
 import { describe, expect, test } from "bun:test";
 import { reducer } from "./reducer";
 import { cardCellIndices } from "./cards";
@@ -21,172 +22,136 @@ const playing = (over: Partial<SequenceState> = {}): SequenceState => ({
 
 const chip = (color: "blue" | "green", locked = false) => ({ color, locked });
 
+const move = (
+  state: SequenceState,
+  card: Card,
+  cell: number,
+  playerId = "green",
+): SequenceState =>
+  reducer(state, { type: "MOVE", playerId, payload: { card, handIndex: 0, cell } });
+
 /** Board with blue chips on both 9H cells (index 35 and 71) → 9H is dead. */
 const boardWithDeadNineH = () =>
   createInitialState().board.map((c, i) =>
     i === 35 || i === 71 ? { ...c, chip: chip("blue") } : c,
   );
 
-describe("turn machine: play → place → draw", () => {
-  test("PLAY_CARD spends a hand card and sets the pending card", () => {
+describe("atomic moves: card + chip + draw in one transition", () => {
+  test("a normal placement commits everything at once", () => {
     const s = playing({ currentPlayerId: "green" });
-    const r = reducer(s, {
-      type: "PLAY_CARD",
-      playerId: "green",
-      payload: { card: NINE_H },
-    });
-    expect(r).not.toBe(s);
-    expect(r.turnStep).toBe("place");
-    expect(r.pendingCard).toEqual(NINE_H);
-    expect(r.handCounts.green).toBe(6);
-    expect(r.board).toEqual(s.board);
-  });
-
-  test("PLACE_CHIP places the chip and moves to the draw step", () => {
-    const s = playing({
-      currentPlayerId: "green",
-      turnStep: "place",
-      pendingCard: NINE_H,
-    });
     const cell = cardCellIndices(NINE_H)[0];
-    const r = reducer(s, {
-      type: "PLACE_CHIP",
-      playerId: "green",
-      payload: { cell },
-    });
+    const r = move(s, NINE_H, cell);
+    expect(r).not.toBe(s);
     expect(r.board[cell].chip).toEqual({ color: "green", locked: false });
-    expect(r.turnStep).toBe("draw");
-    expect(r.pendingCard).toBeNull();
-  });
-
-  test("DRAW_CARD refills the hand and advances the turn", () => {
-    const s = playing({ currentPlayerId: "green", turnStep: "draw" });
-    const r = reducer(s, {
-      type: "DRAW_CARD",
-      playerId: "green",
-      payload: {},
-    });
-    expect(r.handCounts.green).toBe(8);
+    // spent card (-1) refilled by the draw (+1): net zero
+    expect(r.handCounts.green).toBe(7);
     expect(r.deckCount).toBe(89);
     expect(r.currentPlayerId).toBe("blue");
-    expect(r.turnStep).toBe("play");
     expect(r.turnNumber).toBe(s.turnNumber + 1);
   });
-});
 
-describe("reducer preconditions reject invalid proposals", () => {
-  test("not the acting player", () => {
+  test("a two-eyed jack places a chip on any open space", () => {
     const s = playing({ currentPlayerId: "green" });
-    expect(
-      reducer(s, { type: "PLAY_CARD", playerId: "blue", payload: { card: NINE_H } }),
-    ).toBe(s);
+    const r = move(s, JACK_D, 12); // 3H — does not match a jack "card"
+    expect(r.board[12].chip).toEqual({ color: "green", locked: false });
   });
 
-  test("PLACE_CHIP at the wrong turn step", () => {
-    const s = playing({ currentPlayerId: "green", turnStep: "play" });
-    expect(
-      reducer(s, { type: "PLACE_CHIP", playerId: "green", payload: { cell: 35 } }),
-    ).toBe(s);
-  });
-
-  test("PLACE_CHIP on an occupied cell", () => {
-    const cell = cardCellIndices(NINE_H)[0];
-    const board = createInitialState().board.map((c, i) =>
-      i === cell ? { ...c, chip: chip("blue") } : c,
-    );
-    const s = playing({
-      currentPlayerId: "green",
-      turnStep: "place",
-      pendingCard: NINE_H,
-      board,
-    });
-    expect(
-      reducer(s, { type: "PLACE_CHIP", playerId: "green", payload: { cell } }),
-    ).toBe(s);
-  });
-
-  test("PLACE_CHIP on a FREE corner", () => {
-    const s = playing({
-      currentPlayerId: "green",
-      turnStep: "place",
-      pendingCard: JACK_D,
-    });
-    expect(
-      reducer(s, { type: "PLACE_CHIP", playerId: "green", payload: { cell: 0 } }),
-    ).toBe(s);
-  });
-
-  test("PLACE_CHIP with a card that does not match the cell", () => {
-    const s = playing({
-      currentPlayerId: "green",
-      turnStep: "place",
-      pendingCard: NINE_H,
-    });
-    const otherCell = cardCellIndices({ rank: "3", suit: "H" })[0];
-    expect(
-      reducer(s, { type: "PLACE_CHIP", playerId: "green", payload: { cell: otherCell } }),
-    ).toBe(s);
-  });
-
-  test("PLACE_CHIP with a one-eyed jack pending (must be REMOVE_CHIP)", () => {
-    const s = playing({
-      currentPlayerId: "green",
-      turnStep: "place",
-      pendingCard: JACK_S,
-    });
-    expect(
-      reducer(s, { type: "PLACE_CHIP", playerId: "green", payload: { cell: 35 } }),
-    ).toBe(s);
-  });
-
-  test("REMOVE_CHIP cannot remove own chips or locked chips", () => {
-    const cell = 35;
-    const own = playing({
-      currentPlayerId: "green",
-      turnStep: "remove",
-      pendingCard: JACK_S,
-      board: createInitialState().board.map((c, i) =>
-        i === cell ? { ...c, chip: chip("green") } : c,
-      ),
-    });
-    expect(
-      reducer(own, { type: "REMOVE_CHIP", playerId: "green", payload: { cell } }),
-    ).toBe(own);
-
-    const locked = playing({
-      currentPlayerId: "green",
-      turnStep: "remove",
-      pendingCard: JACK_S,
-      board: createInitialState().board.map((c, i) =>
-        i === cell ? { ...c, chip: chip("blue", true) } : c,
-      ),
-    });
-    expect(
-      reducer(locked, { type: "REMOVE_CHIP", playerId: "green", payload: { cell } }),
-    ).toBe(locked);
-  });
-
-  test("REMOVE_CHIP removes an unlocked opponent chip", () => {
+  test("a one-eyed jack removes an unlocked opponent chip", () => {
     const cell = 35;
     const s = playing({
       currentPlayerId: "green",
-      turnStep: "remove",
-      pendingCard: JACK_S,
       board: createInitialState().board.map((c, i) =>
         i === cell ? { ...c, chip: chip("blue") } : c,
       ),
     });
-    const r = reducer(s, {
-      type: "REMOVE_CHIP",
-      playerId: "green",
-      payload: { cell },
-    });
+    const r = move(s, JACK_S, cell);
     expect(r.board[cell].chip).toBeNull();
-    expect(r.turnStep).toBe("draw");
+    expect(r.currentPlayerId).toBe("blue");
+  });
+
+  test("a winning move ends the game without a draw or turn advance", () => {
+    // Row 0 (corner 0 + 1..4) is already complete with green chips; row 1
+    // gets its fifth chip now — two sequences win the game.
+    const board = createInitialState().board.map((c, i) =>
+      (i >= 1 && i <= 4) || (i >= 11 && i <= 14)
+        ? { ...c, chip: chip("green") }
+        : c,
+    );
+    const s = playing({ currentPlayerId: "green", board });
+    const r = move(s, JACK_D, 15);
+    expect(r.status).toEqual({ winner: "green" });
+    expect(r.currentPlayerId).toBe("green"); // turn does NOT advance
+    expect(r.handCounts.green).toBe(6); // card spent, no refill
+    expect(r.deckCount).toBe(90); // no draw
   });
 });
 
-describe("dead card exchange", () => {
+describe("rejections leave the state untouched (nothing commits halfway)", () => {
+  test("not the acting player", () => {
+    const s = playing({ currentPlayerId: "green" });
+    expect(move(s, NINE_H, cardCellIndices(NINE_H)[0], "blue")).toBe(s);
+  });
+
+  test("missing card or cell", () => {
+    const s = playing({ currentPlayerId: "green" });
+    expect(
+      reducer(s, { type: "MOVE", playerId: "green", payload: { handIndex: 0 } }),
+    ).toBe(s);
+    expect(
+      reducer(s, {
+        type: "MOVE",
+        playerId: "green",
+        payload: { card: NINE_H, handIndex: 0 },
+      }),
+    ).toBe(s);
+  });
+
+  test("a dead card cannot be played as a MOVE", () => {
+    const s = playing({
+      currentPlayerId: "green",
+      board: boardWithDeadNineH(),
+    });
+    expect(move(s, NINE_H, 35)).toBe(s);
+  });
+
+  test("occupied cell, FREE corner, or mismatched card", () => {
+    const cell = cardCellIndices(NINE_H)[0];
+    const occupied = playing({
+      currentPlayerId: "green",
+      board: createInitialState().board.map((c, i) =>
+        i === cell ? { ...c, chip: chip("blue") } : c,
+      ),
+    });
+    expect(move(occupied, NINE_H, cell)).toBe(occupied);
+
+    const fresh = playing({ currentPlayerId: "green" });
+    expect(move(fresh, JACK_D, 0)).toBe(fresh); // corner
+    expect(move(fresh, NINE_H, cardCellIndices({ rank: "3", suit: "H" })[0])).toBe(fresh);
+  });
+
+  test("a one-eyed jack cannot place, and cannot remove own or locked chips", () => {
+    const fresh = playing({ currentPlayerId: "green" });
+    expect(move(fresh, JACK_S, 35)).toBe(fresh); // no chip to remove
+
+    const own = playing({
+      currentPlayerId: "green",
+      board: createInitialState().board.map((c, i) =>
+        i === 35 ? { ...c, chip: chip("green") } : c,
+      ),
+    });
+    expect(move(own, JACK_S, 35)).toBe(own);
+
+    const locked = playing({
+      currentPlayerId: "green",
+      board: createInitialState().board.map((c, i) =>
+        i === 35 ? { ...c, chip: chip("blue", true) } : c,
+      ),
+    });
+    expect(move(locked, JACK_S, 35)).toBe(locked);
+  });
+});
+
+describe("dead card exchange (does not end the turn)", () => {
   test("discards the card, draws a replacement, stays on the same turn", () => {
     const s = playing({
       currentPlayerId: "green",
@@ -203,8 +168,8 @@ describe("dead card exchange", () => {
     expect(r.handCounts.green).toBe(7);
     expect(r.deckCount).toBe(4);
     expect(r.deadCardExchanged).toBe(true);
-    expect(r.turnStep).toBe("play");
     expect(r.currentPlayerId).toBe("green");
+    expect(r.turnNumber).toBe(s.turnNumber);
   });
 
   test("without a replacement the hand shrinks by one", () => {
@@ -220,6 +185,16 @@ describe("dead card exchange", () => {
     });
     expect(r.handCounts.green).toBe(6);
     expect(r.deckCount).toBe(0);
+  });
+
+  test("the flag clears on the next turn", () => {
+    const s = playing({
+      currentPlayerId: "green",
+      deadCardExchanged: true,
+    });
+    const r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
+    expect(r.deadCardExchanged).toBe(false);
+    expect(r.currentPlayerId).toBe("blue");
   });
 
   test("only one exchange per turn", () => {
@@ -249,32 +224,29 @@ describe("dead card exchange", () => {
   });
 });
 
-describe("deck exhaustion", () => {
+describe("deck exhaustion on the folded draw", () => {
   test("deck and discards empty: the turn advances with a loss of card", () => {
     const s = playing({
       currentPlayerId: "green",
-      turnStep: "draw",
       deckCount: 0,
       discards: { blue: [], green: [] },
     });
-    const r = reducer(s, { type: "DRAW_CARD", playerId: "green", payload: {} });
+    const r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
     expect(r).not.toBe(s);
     expect(r.currentPlayerId).toBe("blue");
-    expect(r.turnStep).toBe("play");
-    expect(r.handCounts.green).toBe(7);
+    expect(r.handCounts.green).toBe(6); // card spent, nothing to draw
     expect(r.deckCount).toBe(0);
   });
 
   test("deck empty with discards: rebuild the deck from the discard piles", () => {
     const s = playing({
       currentPlayerId: "green",
-      turnStep: "draw",
       deckCount: 0,
       discards: { blue: [{ rank: "2", suit: "C" }, { rank: "3", suit: "C" }], green: [] },
     });
-    const r = reducer(s, { type: "DRAW_CARD", playerId: "green", payload: {} });
+    const r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
     expect(r.deckCount).toBe(1); // 2 discards - 1 drawn
-    expect(r.handCounts.green).toBe(8);
+    expect(r.handCounts.green).toBe(7); // spent + drawn
     expect(r.discards.blue).toEqual([]);
     expect(r.currentPlayerId).toBe("blue");
   });
@@ -282,11 +254,10 @@ describe("deck exhaustion", () => {
 
 describe("sequences, locking and winning", () => {
   // Row 1 of the board: 5D 3H 2H 2S 3S 4S 5S 6S 7S AC → indices 10..19.
+  // Each placement is a full turn; the helper keeps green as the mover so a
+  // single player can claim the whole row deterministically.
   const place = (state: SequenceState, cell: number): SequenceState =>
-    reducer(
-      { ...state, turnStep: "place", pendingCard: JACK_D },
-      { type: "PLACE_CHIP", playerId: "green", payload: { cell } },
-    );
+    move({ ...state, currentPlayerId: "green" }, JACK_D, cell);
 
   test("five in a row claims a sequence and locks its chips", () => {
     let s = playing({ currentPlayerId: "green" });
@@ -323,11 +294,7 @@ describe("purity", () => {
     const s = deepFreeze(playing({ currentPlayerId: "green" }));
     let r: SequenceState | undefined;
     expect(() => {
-      r = reducer(s, {
-        type: "PLAY_CARD",
-        playerId: "green",
-        payload: { card: NINE_H },
-      });
+      r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
     }).not.toThrow();
     expect(r).toBeDefined();
     expect(r).not.toBe(s);

@@ -3,6 +3,12 @@
 // The reducer sees ONLY public facts. Hand contents, the deck order, and all
 // shuffling live host-side (see secrets.ts); each peer's own hand arrives via a
 // "hand" message and never enters the public state.
+//
+// A turn is ONE atomic action: MOVE commits the played card, the chip
+// (placement or one-eyed-jack removal) and the mandatory follow-up draw in a
+// single state transition. Intermediate turn states never exist in the public
+// state, so a replica can never observe — or get stuck in — a half-made turn.
+// The dead-card exchange is its own action because it does NOT end the turn.
 import type { BoardCell, Card, ChipColor, GameAction, SequenceLine, SequenceState } from "./types";
 import { SEQUENCES_TO_WIN } from "./types";
 import {
@@ -18,16 +24,10 @@ export function reducer(
   action: GameAction,
 ): SequenceState {
   switch (action.type) {
-    case "PLAY_CARD":
-      return playCard(state, action);
+    case "MOVE":
+      return move(state, action);
     case "DECLARE_DEAD_CARD":
       return declareDeadCard(state, action);
-    case "PLACE_CHIP":
-      return placeChip(state, action);
-    case "REMOVE_CHIP":
-      return removeChip(state, action);
-    case "DRAW_CARD":
-      return drawCard(state, action);
     default:
       return state;
   }
@@ -58,22 +58,67 @@ function bumpHandCount(
   };
 }
 
-function playCard(state: SequenceState, action: GameAction): SequenceState {
+/**
+ * The whole turn as one transition: spend the card, commit the chip, then
+ * draw and pass. Any invalid part rejects the WHOLE move — the board and the
+ * hand counts can never diverge across an intermediate state. The hand-index
+ * ("is that card really in their hand?") is the host's job: it sees the hands.
+ */
+function move(state: SequenceState, action: GameAction): SequenceState {
   if (!isActingPlayer(state, action)) return state;
-  if (state.turnStep !== "play") return state;
-  const { card } = (action.payload ?? {}) as { card: Card };
-  if (!card) return state;
-  // Hand-content validation ("is that card really in their hand?") is the
-  // host's job (it sees the hands); the reducer enforces the public rules.
+  const { card, cell } = (action.payload ?? {}) as { card?: Card; cell?: number };
+  if (!card || !Number.isInteger(cell)) return state;
+  const idx = cell as number;
+  if (idx < 0 || idx >= state.board.length) return state;
+  const target = state.board[idx];
+  if (!target) return state;
+  // A dead card has no legal use — it must be declared dead instead.
   if (isDeadCard(state.board, card, playerColor(state, action.playerId))) {
-    return state; // a dead card must be declared dead instead
+    return state;
   }
-  return {
+
+  // The spent card leaves the hand; the follow-up draw is added below — or
+  // not, when the move ends the game or no card exists anywhere to draw.
+  const spent = {
     ...state,
     handCounts: bumpHandCount(state, action.playerId, -1),
-    pendingCard: card,
-    turnStep: isOneEyedJack(card) ? "remove" : "place",
   };
+
+  if (isOneEyedJack(card)) {
+    // One-eyed jack: remove an opponent chip (locked chips are safe).
+    if (target.card === "FREE" || !target.chip) return state;
+    const color = playerColor(state, action.playerId);
+    if (target.chip.color === color || target.chip.locked) return state;
+    const board = [...spent.board];
+    board[idx] = { ...target, chip: null };
+    // Removing a chip can never complete a sequence, and never fills the board.
+    return drawAndAdvance({ ...spent, board });
+  }
+
+  // Normal card or two-eyed jack: place a chip.
+  if (target.card === "FREE" || target.chip !== null) return state;
+  if (!isTwoEyedJack(card) && !cardsEqual(target.card, card)) return state;
+
+  const color = playerColor(state, action.playerId);
+  const board = [...spent.board];
+  board[idx] = { ...target, chip: { color, locked: false } };
+
+  // Claim any newly completed sequences (overlap rule: a new sequence may
+  // share at most one chip with the already-claimed ones).
+  const sequences = claimNewSequences(board, color, state.sequences);
+  if (sequences.length > state.sequences.length) {
+    lockSequenceChips(board, sequences, state.sequences.length);
+  }
+
+  const placed: SequenceState = {
+    ...spent,
+    board,
+    sequences,
+    status: resolveStatus(state, board, sequences, action.playerId),
+  };
+  // A finished game (win or full board) ends the turn without a draw.
+  if (placed.status) return placed;
+  return drawAndAdvance(placed);
 }
 
 function declareDeadCard(
@@ -81,11 +126,10 @@ function declareDeadCard(
   action: GameAction,
 ): SequenceState {
   if (!isActingPlayer(state, action)) return state;
-  if (state.turnStep !== "play") return state;
   if (state.deadCardExchanged) return state; // one exchange per turn
   const { card, replacementDrawn } = (action.payload ?? {}) as {
-    card: Card;
-    replacementDrawn: boolean;
+    card?: Card;
+    replacementDrawn?: boolean;
   };
   if (!card) return state;
   if (!isDeadCard(state.board, card, playerColor(state, action.playerId))) {
@@ -103,72 +147,15 @@ function declareDeadCard(
   };
 }
 
-function placeChip(state: SequenceState, action: GameAction): SequenceState {
-  if (!isActingPlayer(state, action)) return state;
-  if (state.turnStep !== "place" || !state.pendingCard) return state;
-  const { cell } = (action.payload ?? {}) as { cell: number };
-  if (!Number.isInteger(cell) || cell < 0 || cell >= state.board.length) {
-    return state;
-  }
-  const boardCell = state.board[cell];
-  if (boardCell.card === "FREE" || boardCell.chip !== null) return state;
-  if (isOneEyedJack(state.pendingCard)) return state;
-  if (
-    !isTwoEyedJack(state.pendingCard) &&
-    !cardsEqual(boardCell.card, state.pendingCard)
-  ) {
-    return state;
-  }
+// --- Follow-up draw & turn transition ---------------------------------------------
 
-  const color = playerColor(state, action.playerId);
-  const board = [...state.board];
-  board[cell] = { ...boardCell, chip: { color, locked: false } };
-
-  // Claim any newly completed sequences (overlap rule: a new sequence may
-  // share at most one chip with the already-claimed ones).
-  const sequences = claimNewSequences(board, color, state.sequences);
-  if (sequences.length > state.sequences.length) {
-    lockSequenceChips(board, sequences, state.sequences.length);
-  }
-
-  return endTurnStep({
-    ...state,
-    board,
-    sequences,
-    status: resolveStatus(state, board, sequences, action.playerId),
-  });
-}
-
-function removeChip(state: SequenceState, action: GameAction): SequenceState {
-  if (!isActingPlayer(state, action)) return state;
-  if (state.turnStep !== "remove" || !state.pendingCard) return state;
-  if (!isOneEyedJack(state.pendingCard)) return state;
-  const { cell } = (action.payload ?? {}) as { cell: number };
-  if (!Number.isInteger(cell) || cell < 0 || cell >= state.board.length) {
-    return state;
-  }
-  const boardCell = state.board[cell];
-  if (boardCell.card === "FREE" || !boardCell.chip) return state;
-  const color = playerColor(state, action.playerId);
-  if (boardCell.chip.color === color) return state; // cannot remove own chip
-  if (boardCell.chip.locked) return state; // protected by a completed sequence
-
-  const board = [...state.board];
-  board[cell] = { ...boardCell, chip: null };
-  // Removing a chip can never complete a sequence, and never fills the board.
-  return endTurnStep({ ...state, board });
-}
-
-function drawCard(state: SequenceState, action: GameAction): SequenceState {
-  if (!isActingPlayer(state, action)) return state;
-  if (state.turnStep !== "draw") return state;
-  // The drawn card itself stays hidden: only public counts change here, and
-  // the drawing player's hand is updated via a "hand" message.
-  const next = {
-    ...state,
-    handCounts: bumpHandCount(state, action.playerId, 1),
-    deckCount: state.deckCount - 1,
-  };
+/**
+ * The mandatory end-of-turn draw, folded into the same transition as the move:
+ * the drawn card itself stays hidden (only public counts change here, and the
+ * drawing player's hand is updated via a "hand" message).
+ */
+function drawAndAdvance(state: SequenceState): SequenceState {
+  const playerId = state.currentPlayerId;
   if (state.deckCount <= 0) {
     // Deck exhausted: rebuild it from the PUBLIC discard piles (deterministic
     // for every replica — only the shuffled ORDER is host-side, in secrets).
@@ -185,15 +172,18 @@ function drawCard(state: SequenceState, action: GameAction): SequenceState {
     const discards: SequenceState["discards"] = {};
     for (const seat of state.turnOrder) discards[seat] = [];
     return advanceTurn({
-      ...next,
+      ...state,
+      handCounts: bumpHandCount(state, playerId, 1),
       deckCount: discardTotal - 1,
       discards,
     });
   }
-  return advanceTurn(next);
+  return advanceTurn({
+    ...state,
+    handCounts: bumpHandCount(state, playerId, 1),
+    deckCount: state.deckCount - 1,
+  });
 }
-
-// --- Turn / step transitions ------------------------------------------------------
 
 function advanceTurn(state: SequenceState): SequenceState {
   const idx = state.turnOrder.indexOf(state.currentPlayerId);
@@ -201,16 +191,9 @@ function advanceTurn(state: SequenceState): SequenceState {
   return {
     ...state,
     currentPlayerId: nextId,
-    turnStep: "play",
-    pendingCard: null,
     deadCardExchanged: false,
     turnNumber: state.turnNumber + 1,
   };
-}
-
-/** Clears the pending card and moves to the draw step of the same turn. */
-function endTurnStep(state: SequenceState): SequenceState {
-  return { ...state, turnStep: "draw", pendingCard: null };
 }
 
 // --- Sequence claiming & win detection --------------------------------------------

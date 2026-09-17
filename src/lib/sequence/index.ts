@@ -29,8 +29,6 @@ export function createInitialState(): SequenceState {
     discards: {},
     sequences: [],
     turnNumber: 0,
-    turnStep: "play",
-    pendingCard: null,
     deadCardExchanged: false,
     status: undefined,
   };
@@ -38,8 +36,11 @@ export function createInitialState(): SequenceState {
 
 // --- P2P message protocol -----------------------------------------------------
 // Host -> clients: "start" (game (re)started), "state" (public state + the
-// recipient's own hand, so a turn applies in a single paint).
-// Clients -> host: "action" (a proposal, validated host-side).
+// recipient's own hand). Exactly ONE state message is published per committed
+// turn — states are always at turn boundaries.
+// Clients -> host: "action" (a proposal). MOVE is the whole turn; the host
+// answers every proposal with an authoritative state (broadcast on accept,
+// resync on reject), which the client's response watchdog relies on.
 
 export type HostMessage =
   | { type: "start" }

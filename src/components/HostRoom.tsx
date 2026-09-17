@@ -50,10 +50,10 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
           state: SequenceState;
           secrets: SerializedSecrets;
         };
+        // States are published only at turn boundaries, so any snapshot is
+        // directly resumable — no mid-turn fold needed.
         setGameState(parsed.state);
         secrets.restore(parsed.secrets);
-        // A reloaded host may resume mid-draw — finish the mandatory draw.
-        setGameState(settleDraws(parsed.state));
       } catch {
         // stale/corrupt snapshot — start clean
       }
@@ -64,14 +64,15 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
         setConns((prev) => [...prev, conn]);
         // Client reloaded mid-game (or joined late): give it the current
         // game and its own hand so it doesn't sit on "waiting for host…".
-        if (gameState().phase !== "lobby") {
-          conn.send({ type: "start" } satisfies HostMessage);
-          conn.send({
-            type: "state",
-            state: gameState(),
-            hand: secrets.handOf("green"),
-          } satisfies HostMessage);
-        }
+        // Sent in the lobby phase too (an initial lobby state) so the
+        // client's reconnect handshake ALWAYS completes with a state
+        // message — it treats unanswered connects as a dead channel.
+        conn.send({ type: "start" } satisfies HostMessage);
+        conn.send({
+          type: "state",
+          state: gameState(),
+          hand: secrets.handOf("green"),
+        } satisfies HostMessage);
       });
       conn.on("close", () => {
         setConns((prev) => prev.filter((c) => c !== conn));
@@ -94,7 +95,28 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   });
 
   const broadcast = (msg: HostMessage) => {
-    for (const conn of conns()) conn.send(msg);
+    // A dying channel drops sends silently (peerjs only logs an error event)
+    // and its "close" event may never fire, so prune non-open connections
+    // here instead of feeding a black hole.
+    const live = conns().filter((conn) => conn.open);
+    if (live.length !== conns().length) setConns(live);
+    for (const conn of live) {
+      try {
+        conn.send(msg);
+      } catch {
+        // Transport-level failure: the client's response watchdog will
+        // reconnect, and the reconnect handshake resends this state.
+      }
+    }
+  };
+
+  /** Push the authoritative state + guest hand to every open client. */
+  const resyncClients = () => {
+    broadcast({
+      type: "state",
+      state: gameState(),
+      hand: secrets.handOf("green"),
+    });
   };
 
   /** Reactive accessor over the mutable secrets for the host's own hand. */
@@ -106,7 +128,9 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   /**
    * The host is the authority: it validates proposals against the hidden
    * information (secrets), applies the pure reducer, then publishes the new
-   * public state and the affected player's hand.
+   * public state and the affected player's hand. An accepted proposal always
+   * commits (prepareProposal dry-runs the reducer), so a no-op result can
+   * only mean an unknown/malformed action — resynced below for safety.
    */
   const applyAction = (
     seat: string,
@@ -118,58 +142,49 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
       action.type,
       action.payload,
     );
-    if (prepared === null) return;
+    if (prepared === null) {
+      // Rejected. Answer anyway: the client treats every proposal as needing
+      // an authoritative response, and it may be acting on a stale view —
+      // the resync gets it back to the true state instead of a dead turn.
+      resyncClients();
+      return;
+    }
     const next = reducer(gameState(), {
       type: action.type as GameAction["type"],
       playerId: seat,
       payload: prepared.payload,
     });
-    if (next !== gameState()) publish(next);
-  };
-
-  /**
-   * Fold any pending mandatory draws into the state before publishing, so a
-   * turn reaches clients as ONE update (chip placed + card drawn together).
-   * Publishing the intermediate draw-step state made the client's hand
-   * flicker: briefly one card short before the drawn card arrived.
-   */
-  const settleDraws = (state: SequenceState): SequenceState => {
-    let cur = state;
-    while (cur.phase === "playing" && !cur.status && cur.turnStep === "draw") {
-      const seat = cur.currentPlayerId;
-      const prepared = secrets.prepareProposal(cur, seat, "DRAW_CARD", {});
-      if (prepared === null) break;
-      const next = reducer(cur, {
-        type: "DRAW_CARD",
-        playerId: seat,
-        payload: prepared.payload,
-      });
-      if (next === cur) break;
-      cur = next;
+    if (next === gameState()) {
+      resyncClients();
+      return;
     }
-    return cur;
+    publish(next);
   };
 
   /** Adopt a new state, bump hand reactivity, and sync all clients. */
   const publish = (next: SequenceState, announce = false) => {
-    const final = settleDraws(next);
     // One batch: state + hand version apply in a single render pass.
     batch(() => {
-      setGameState(final);
+      setGameState(next);
       setHandVersion((v) => v + 1); // a committed action may have changed hands
     });
     if (announce) broadcast({ type: "start" });
     broadcast({
       type: "state",
-      state: final,
+      state: next,
       hand: secrets.handOf("green"),
     });
   };
 
   const handleData = (raw: unknown) => {
     const msg = raw as ClientMessage;
-    if (msg?.type === "action" && msg.action?.type) {
+    if (msg?.type !== "action" || !msg.action?.type) return;
+    try {
       applyAction("green", msg.action);
+    } catch {
+      // Malformed payload (peerjs delivers whatever the peer sent, e.g. a
+      // destructuring TypeError): resync instead of dropping the message.
+      resyncClients();
     }
   };
 

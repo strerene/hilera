@@ -36,10 +36,12 @@ the room link in a second tab/window).
    add hands or deck contents to `SequenceState`, and never include them in a
    `HostMessage` broadcast. Each client receives only *its own* hand via the
    `state` message's `hand` field.
-3. **`SequenceSecrets.prepareProposal` must mirror the reducer's public
-   preconditions** (acting player, phase, turn step, card possession) before
-   mutating secrets, so an accepted proposal is guaranteed to commit. If you
-   change reducer preconditions, change the mirror in `prepareProposal` too.
+3. **`SequenceSecrets.prepareProposal` must guarantee that an accepted
+   proposal commits.** It does so by dry-running the pure reducer on the
+   public state BEFORE mutating secrets, then applying only the hidden side
+   effects (remove card, reshuffle, draw) that the dry run's public counts
+   imply. If you change reducer preconditions or the draw/reshuffle rules,
+   keep that secret-application step in sync.
 4. **Seats are colors:** host seat is `"blue"`, client seat is `"green"`;
    `turnOrder[0]` is the host. Two-player only — don't generalize to N players
    without a deliberate redesign.
@@ -47,16 +49,20 @@ the room link in a second tab/window).
 ## Code map
 
 - `src/lib/sequence/` — game engine, framework-agnostic (no DOM, no Solid).
-  - `types.ts` — state shape, the five actions, constants.
+  - `types.ts` — state shape, the two actions (`MOVE`, `DECLARE_DEAD_CARD`),
+    constants.
   - `cards.ts` — deck, board layout, card predicates, `SEQUENCE_WINDOWS`.
-  - `reducer.ts` — the rules machine (pure).
-  - `secrets.ts` — host-only hidden state + proposal validation.
+  - `reducer.ts` — the rules machine (pure): a turn is ONE atomic `MOVE`
+    (card + chip + mandatory draw folded in); `DECLARE_DEAD_CARD` swaps a
+    dead card without ending the turn.
+  - `secrets.ts` — host-only hidden state + proposal validation (dry-runs
+    the reducer before mutating secrets).
   - `index.ts` — exports + the P2P message protocol types.
 - `src/lib/p2p.ts` — PeerJS lifecycle (`createRoom`/`joinRoom`), role
   persistence in `sessionStorage`, module-level peer singleton.
 - `src/components/HostRoom.tsx` — authority loop: validate proposal → reducer →
-  broadcast `state` + recipient's hand; `sessionStorage` persistence;
-  `settleDraws` folds pending draws into one update.
+  broadcast `state` + recipient's hand; `sessionStorage` persistence; states
+  are always published at turn boundaries.
 - `src/components/ClientRoom.tsx` — sends `action` proposals, renders host state.
 - `src/components/SequenceGame.tsx` — shared board/hand UI.
 - `src/routes/` — SolidStart file-based routes (`index`, `about`, 404).
@@ -81,9 +87,17 @@ the room link in a second tab/window).
 
 ## Pitfalls
 
-- Editing only the reducer when a rule changes — the host's secret validation
-  and the deck-reshuffle mirroring in both `reducer.ts` and `secrets.ts` must
-  stay in sync or replicas/secrets will drift.
+- Editing only the reducer when a rule changes — the dry run in
+  `prepareProposal` catches public-precondition drift automatically, but the
+  hidden side effects (card removal, reshuffle, draw) are still hand-written
+  to mirror what the dry run's public counts imply. Keep them aligned, or
+  hands/deck will drift from the public state.
 - Putting anything beyond public facts into broadcast payloads (leaks hands).
 - Storing game state anywhere other than `sessionStorage` per-tab (multiple
   tabs host/join different rooms independently by design).
+- Breaking the "host answers every action" contract: the host must respond to
+  every client proposal with an authoritative `state` message (broadcast on
+  accept, resync on reject), and always send `start` + `state` to a newly
+  opened connection. The client's response watchdog reconnects when a
+  proposal or handshake goes unanswered — if the host stops replying (e.g. to
+  rejected proposals), clients go into a reconnect loop instead of recovering.

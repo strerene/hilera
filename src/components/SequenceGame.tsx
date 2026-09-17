@@ -3,7 +3,6 @@ import type { BoardCell, Card, ChipColor, SequenceState } from "~/lib/sequence";
 import {
   cardToString,
   cardCellIndices,
-  cardsEqual,
   isDeadCard,
   isOneEyedJack,
   isTwoEyedJack,
@@ -141,8 +140,7 @@ export default function SequenceGame(props: {
   );
   const myTurn = () =>
     s().phase === "playing" && !s().status && s().currentPlayerId === props.seat;
-  const inPlayStep = () => myTurn() && s().turnStep === "play";
-  const canExchangeDead = () => inPlayStep() && !s().deadCardExchanged;
+  const canExchangeDead = () => myTurn() && !s().deadCardExchanged;
 
   const name = (seat: string) => s().players[seat]?.name ?? seat;
   const currentPlayer = () => s().players[s().currentPlayerId];
@@ -153,22 +151,29 @@ export default function SequenceGame(props: {
     return w ? name(w) : undefined;
   };
 
-  // Clear the card selection when the turn moves on (back to 'play').
+  // Clear the card selection at every turn boundary (turnNumber changes once
+  // per turn) — including our own committed move, since the redrawn hand
+  // makes stale selection indices meaningless.
   createEffect(
     on(
-      () => s().turnStep,
-      (step) => {
-        if (step === "play") setSelected(null);
-      },
+      () => s().turnNumber,
+      () => setSelected(null),
+      { defer: true },
     ),
   );
 
-  // Flash the chips of newly claimed sequences for a moment.
+  // Flash the chips of newly claimed sequences for a moment. The previous
+  // count is tracked locally and seeded at setup: on()'s prev input is
+  // undefined on the first run after mount, which would silently swallow a
+  // sequence claimed in the first state update after a (re)connect.
+  let prevSequenceCount = s().sequences.length;
   createEffect(
     on(
       () => s().sequences.length,
-      (count, prev) => {
-        if (prev === undefined || count <= prev) return;
+      (count) => {
+        const prev = prevSequenceCount;
+        prevSequenceCount = count;
+        if (count <= prev) return;
         const cells = new Set<number>();
         for (let i = prev; i < count; i++) {
           for (const c of s().sequences[i].cells) cells.add(c);
@@ -177,7 +182,6 @@ export default function SequenceGame(props: {
         clearTimeout(flashTimer);
         flashTimer = setTimeout(() => setSequenceFlash(new Set<number>()), 2500);
       },
-      { defer: true },
     ),
   );
   onCleanup(() => {
@@ -196,11 +200,16 @@ export default function SequenceGame(props: {
   // and a reference diff would see the whole board as changed.
   const chipChanged = (a: BoardCell["chip"], b: BoardCell["chip"]) =>
     !!a !== !!b || (a !== null && b !== null && a!.color !== b!.color);
+  // Same local-prev seeding as the sequence flash: diff against the board
+  // captured at setup so the first update after a (re)connect is comparable.
+  let prevBoard = s().board;
   createEffect(
     on(
       () => s().board,
-      (board, prev) => {
-        if (!prev) return;
+      (board) => {
+        const prev = prevBoard;
+        prevBoard = board;
+        if (prev === board) return;
         let changed = -1;
         for (let i = 0; i < board.length; i++) {
           if (chipChanged(board[i].chip, prev[i].chip)) {
@@ -213,68 +222,33 @@ export default function SequenceGame(props: {
         clearTimeout(lastMoveTimer);
         lastMoveTimer = setTimeout(() => setLastMoveFlash(null), 900);
       },
-      { defer: true },
     ),
   );
 
-  // Note: the mandatory draw step is advanced host-side automatically, so no
-  // client-side auto-draw is needed here.
+  // The mandatory end-of-turn draw is folded into the host's MOVE commit, so
+  // no client-side auto-draw is needed here.
 
-  // Local, frontend-only selection: the chosen card stays switchable until the
-  // player commits to a board space, and the highlights below are computed
-  // from it (never from public state — the opponent sees nothing until the
-  // chip is actually placed).
+  // Local, frontend-only selection: the chosen card stays switchable until
+  // the player commits to a board space, and the highlights below are
+  // computed from it (never from public state — the opponent sees nothing
+  // until the chip is actually placed).
   const selectedCard = createMemo(() => {
     const idx = selected();
     return idx === null ? undefined : props.hand[idx];
   });
 
-  // Legal target cells on the own board. Two sources:
-  // - turnStep 'play': the locally selected hand card (the normal path).
-  // - turnStep 'place'/'remove': recovery for a lost or rejected chip
-  //   proposal. PLAY_CARD has already committed, the hand card is spent, but
-  //   pendingCard is public — so the legal targets can be recomputed from it
-  //   and the player can re-propose the chip action instead of deadlocking.
+  // Legal target cells for the selected hand card.
   const highlightCells = createMemo(() => {
     const targets = new Set<number>();
-    const st = s();
-    const board = st.board;
     if (!myTurn()) return targets;
-
-    if (st.turnStep !== "play") {
-      const pending = st.pendingCard;
-      if (!pending) return targets;
-      if (st.turnStep === "place") {
-        if (isOneEyedJack(pending)) return targets;
-        board.forEach((cell, i) => {
-          if (cell.card === "FREE" || cell.chip) return;
-          if (isTwoEyedJack(pending) || cardsEqual(cell.card, pending)) {
-            targets.add(i);
-          }
-        });
-      } else if (st.turnStep === "remove") {
-        if (!isOneEyedJack(pending)) return targets;
-        board.forEach((cell, i) => {
-          if (
-            cell.chip &&
-            !cell.chip.locked &&
-            cell.chip.color !== myColor()
-          ) {
-            targets.add(i);
-          }
-        });
-      }
-      return targets;
-    }
-
     const card = selectedCard();
-    if (!card || isDeadCard(board, card, myColor())) return targets;
+    if (!card || isDeadCard(s().board, card, myColor())) return targets;
     if (isTwoEyedJack(card)) {
-      board.forEach((cell, i) => {
+      s().board.forEach((cell, i) => {
         if (cell.card !== "FREE" && !cell.chip) targets.add(i);
       });
     } else if (isOneEyedJack(card)) {
-      board.forEach((cell, i) => {
+      s().board.forEach((cell, i) => {
         if (
           cell.card !== "FREE" &&
           cell.chip &&
@@ -286,7 +260,7 @@ export default function SequenceGame(props: {
       });
     } else {
       for (const i of cardCellIndices(card)) {
-        if (!board[i].chip) targets.add(i);
+        if (!s().board[i].chip) targets.add(i);
       }
     }
     return targets;
@@ -296,27 +270,15 @@ export default function SequenceGame(props: {
     const st = s();
     if (st.status) return "";
     if (st.currentPlayerId === props.seat) {
-      if (st.turnStep === "play") {
-        return selectedCard()
-          ? "Click a highlighted space (or pick another card)"
-          : "Your turn — play a card";
-      }
-      if (st.turnStep === "place") return "Click a highlighted space to place your chip";
-      if (st.turnStep === "remove") return "Click a highlighted opponent chip to remove it";
-      if (st.turnStep === "draw") return "Drawing a card…";
+      return selectedCard()
+        ? "Click a highlighted space (or pick another card)"
+        : "Your turn — play a card";
     }
-    const steps: Record<string, string> = {
-      play: "play a card",
-      place: "place a chip",
-      remove: "remove an opponent chip",
-      draw: "draw a card",
-    };
-    const step = steps[st.turnStep] ?? st.turnStep;
-    return `Waiting for ${name(st.currentPlayerId)} to ${step}…`;
+    return `Waiting for ${name(st.currentPlayerId)} to play…`;
   };
 
   function selectCard(index: number) {
-    if (!inPlayStep()) return;
+    if (!myTurn()) return;
     const card = props.hand[index];
     if (!card) return;
     // Frontend-only selection: click again to deselect, click another card to
@@ -333,7 +295,7 @@ export default function SequenceGame(props: {
   /** Discard the selected dead card for a replacement (once per turn). */
   function exchangeSelectedDead() {
     const index = selected();
-    if (index === null || !inPlayStep() || !canExchangeDead()) return;
+    if (index === null || !canExchangeDead()) return;
     const card = props.hand[index];
     if (!card || !isDeadCard(s().board, card, myColor())) return;
     props.onPropose("DECLARE_DEAD_CARD", { card, handIndex: index });
@@ -342,23 +304,12 @@ export default function SequenceGame(props: {
 
   function cellClick(index: number) {
     if (!myTurn() || !highlightCells().has(index)) return;
-    const st = s();
-    // Recovery path: re-propose the chip action for the already-committed
-    // pending card. A duplicate after a merely slow (not lost) proposal is
-    // rejected host-side — the turn will have moved past the chip step.
-    if (st.turnStep === "place" || st.turnStep === "remove") {
-      props.onPropose(st.turnStep === "place" ? "PLACE_CHIP" : "REMOVE_CHIP", {
-        cell: index,
-      });
-      return;
-    }
     const card = selectedCard();
     if (!card) return;
-    // Commit the card and the chip action together — the turn machine
-    // (play → place/remove → draw) processes the two proposals in order.
-    props.onPropose("PLAY_CARD", { card, handIndex: selected() });
-    if (isOneEyedJack(card)) props.onPropose("REMOVE_CHIP", { cell: index });
-    else props.onPropose("PLACE_CHIP", { cell: index });
+    // ONE proposal per turn: the host validates and commits card + chip
+    // atomically (auto-draw folded in), so no half-made turn can ever exist
+    // on the wire — a lost or rejected proposal leaves a clean state behind.
+    props.onPropose("MOVE", { card, handIndex: selected(), cell: index });
     setSelected(null);
   }
 
@@ -427,7 +378,7 @@ export default function SequenceGame(props: {
                 index={i()}
                 selected={selected() === i()}
                 dead={isDeadCard(s().board, card, myColor())}
-                clickable={inPlayStep()}
+                clickable={myTurn()}
                 canExchange={canExchangeDead()}
                 onSelect={selectCard}
               />
