@@ -1,4 +1,4 @@
-import type { DataConnection } from "peerjs";
+import type { DataConnection, Peer } from "peerjs";
 import { useNavigate } from "@solidjs/router";
 import { batch, createSignal, onCleanup, onMount, Show } from "solid-js";
 import SequenceGame from "~/components/SequenceGame";
@@ -15,6 +15,12 @@ import { joinRoom, leaveRoom } from "~/lib/p2p";
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
+// How long a proposal (or the post-reconnect handshake) may go unanswered
+// before the data channel is considered dead. The host answers EVERY action
+// with a "state" message, so silence means the channel is black-holed —
+// something WebRTC can do without ever firing "close", which is what used to
+// leave the board stuck until a manual refresh.
+const RESPONSE_TIMEOUT_MS = 8000;
 
 export default function ClientRoom(props: { roomId: string }) {
   const navigate = useNavigate();
@@ -26,28 +32,85 @@ export default function ClientRoom(props: { roomId: string }) {
   const [hand, setHand] = createSignal<Card[]>([]);
 
   let connection: DataConnection | undefined;
+  let peer: Peer | undefined;
   let retries = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  let responseTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const clearResponseTimer = () => {
+    if (responseTimer) {
+      clearTimeout(responseTimer);
+      responseTimer = undefined;
+    }
+  };
+
+  /** Expect a "state" message soon, or treat the channel as dead. */
+  const armResponseTimer = () => {
+    clearResponseTimer();
+    responseTimer = setTimeout(() => {
+      responseTimer = undefined;
+      handleDisconnect();
+    }, RESPONSE_TIMEOUT_MS);
+  };
+
+  const handleDisconnect = () => {
+    // Callers identity-check the connection first, so a late "close" from one
+    // we already replaced (or closed ourselves below) is a no-op.
+    clearResponseTimer();
+    const conn = connection;
+    connection = undefined;
+    if (conn) {
+      try {
+        conn.close();
+      } catch {
+        // already closed
+      }
+    }
+    setStatus("disconnected");
+    scheduleRetry();
+  };
 
   const connect = async () => {
     try {
+      // joinRoom always creates a fresh client peer; destroy the half-dead one
+      // from a previous attempt so it doesn't leak its signaling socket.
+      if (peer) {
+        const stale = peer;
+        peer = undefined;
+        connection = undefined;
+        try {
+          stale.destroy();
+        } catch {
+          // already dead
+        }
+      }
       const room = await joinRoom(props.roomId);
-      connection = room.connection;
+      peer = room.peer;
+      const conn = room.connection;
+      connection = conn;
       retries = 0;
       setStatus("connected");
 
-      room.connection.on("close", () => {
-        connection = undefined;
-        setStatus("disconnected");
-        // The host may have reloaded — try to get back into the room.
-        scheduleRetry();
+      conn.on("close", () => {
+        if (connection !== conn) return;
+        handleDisconnect();
       });
-      room.connection.on("data", (raw) => {
+      conn.on("error", () => {
+        if (connection !== conn) return;
+        // peerjs only logs send failures ("Connection is not open yet", …) —
+        // treat any connection error as a disconnect and reconnect.
+        handleDisconnect();
+      });
+      conn.on("data", (raw) => {
         const msg = raw as HostMessage;
         if (msg.type === "start") {
-          setGameState(createInitialState());
-          setHand([]);
+          batch(() => {
+            setGameState(createInitialState());
+            setHand([]);
+          });
         } else if (msg.type === "state") {
+          // Any authoritative state proves the channel is alive.
+          clearResponseTimer();
           // State + own hand arrive together, so a turn applies in one batch:
           // the hand never renders in its intermediate (one card short) form.
           // PeerJS callbacks are not Solid event handlers, so the two writes
@@ -59,6 +122,10 @@ export default function ClientRoom(props: { roomId: string }) {
           });
         }
       });
+      // The host answers every connection with an initial "state" (lobby or
+      // game); expect it like a proposal response so a lost handshake
+      // reconnects instead of parking the lobby forever.
+      armResponseTimer();
     } catch (err) {
       if (retries < MAX_RETRIES) {
         scheduleRetry();
@@ -69,7 +136,11 @@ export default function ClientRoom(props: { roomId: string }) {
   };
 
   const scheduleRetry = () => {
-    if (retries >= MAX_RETRIES || retryTimer) return;
+    if (retryTimer) return;
+    if (retries >= MAX_RETRIES) {
+      setStatus("disconnected");
+      return;
+    }
     retries += 1;
     setStatus("connecting");
     retryTimer = setTimeout(() => {
@@ -84,14 +155,32 @@ export default function ClientRoom(props: { roomId: string }) {
 
   onCleanup(() => {
     if (retryTimer) clearTimeout(retryTimer);
-    // joinRoom's peer is a fresh client peer, not the shared host singleton
-    connection?.close();
+    clearResponseTimer();
+    // joinRoom's peer is a fresh client peer, not the shared host singleton;
+    // destroying it also closes the data connection.
+    try {
+      peer?.destroy();
+    } catch {
+      // already dead
+    }
   });
 
   // Proposals are validated by the host against the hidden information —
   // the client only ever sees the public state plus its own hand.
   const propose = (type: string, payload?: unknown) => {
-    connection?.send({ type: "action", action: { type, payload } } satisfies ClientMessage);
+    const conn = connection;
+    if (!conn || !conn.open) {
+      // peerjs drops sends on a closed connection with a logged error only;
+      // treat it as a disconnect instead of silently eating the move.
+      if (conn) handleDisconnect();
+      return;
+    }
+    conn.send({ type: "action", action: { type, payload } } satisfies ClientMessage);
+    // The host answers every action with an authoritative "state" (broadcast
+    // on accept, resync on reject). Silence beyond the timeout means the
+    // channel is black-holed: reconnect, which is what a manual refresh used
+    // to be needed for.
+    armResponseTimer();
   };
 
   // Leave wipes this tab's room session before navigating home; onCleanup
@@ -109,6 +198,17 @@ export default function ClientRoom(props: { roomId: string }) {
       when={gameState().phase === "lobby"}
       fallback={
         <div class="flex min-h-[calc(100dvh-2rem)] w-full flex-col items-center gap-4">
+          <Show when={status() !== "connected" || error()}>
+            <div class="alert alert-warning w-full max-w-2xl" role="alert">
+              <Show
+                when={status() === "connecting" && !error()}
+                fallback={<span>Connection lost — reload the page to retry.</span>}
+              >
+                <span class="loading loading-spinner" />
+                <span>Reconnecting to host…</span>
+              </Show>
+            </div>
+          </Show>
           <SequenceGame
             roomId={props.roomId}
             state={gameState()}
@@ -125,7 +225,7 @@ export default function ClientRoom(props: { roomId: string }) {
                 seat: "green",
                 name: gameState().players.green?.name ?? "Guest",
                 color: "green",
-                connected: true,
+                connected: status() === "connected",
                 you: true,
               },
             ]}
