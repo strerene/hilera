@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-/* One custom theme only: the neobrutalist "sequence" palette. Built-in
+/* One custom theme only: the neobrutalist "hilera" palette. Built-in
    daisyUI themes are disabled so the app always renders in this skin. */
 @plugin "daisyui" {
   themes: false;
 }
 
 @plugin "daisyui/theme" {
-  name: "sequence";
+  name: "hilera";
   default: true;
   prefersdark: false;
   color-scheme: light;

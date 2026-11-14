@@ -35,7 +35,7 @@ export default function RoomRoute() {
 
   return (
     <main class="flex min-h-screen items-center justify-center p-4">
-      <Title>Sequence</Title>
+      <Title>Hilera</Title>
       <Show when={mounted()}>
         <Show
           when={!failed()}

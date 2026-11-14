@@ -1,10 +1,11 @@
 # Architecture
 
-Sequence is a two-player online version of the board game **Sequence**, built with
-[SolidStart](https://start.solidjs.com) and played peer-to-peer in the browser
-via [PeerJS](https://peerjs.com/) (WebRTC data channels). There is no game
-server: one browser tab **hosts** the game and acts as the authority; the other
-tab **joins** as a client.
+**Hilera** is a two-player online card-and-board game: play a card, place a
+chip on the matching space, and race to claim two sequences of five. It is
+built with [SolidStart](https://start.solidjs.com) and played peer-to-peer in
+the browser via [PeerJS](https://peerjs.com/) (WebRTC data channels). There is
+no game server: one browser tab **hosts** the game and acts as the authority;
+the other tab **joins** as a client.
 
 ## Stack
 

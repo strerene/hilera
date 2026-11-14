@@ -4,9 +4,10 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-Two-player online **Sequence** board game. SolidStart (SolidJS + Vite + Nitro
-static preset) with peer-to-peer multiplayer via PeerJS WebRTC data channels.
-No game server: the hosting browser tab is the authority.
+Two-player online board game **Hilera**: play a card, place a chip, and race
+to claim two sequences of five. SolidStart (SolidJS + Vite + Nitro static
+preset) with peer-to-peer multiplayer via PeerJS WebRTC data channels. No game
+server: the hosting browser tab is the authority.
 
 ## Commands
 

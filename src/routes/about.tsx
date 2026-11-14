@@ -5,7 +5,7 @@ import { MemphisBackdrop } from "~/components/ui/Memphis";
 export default function About() {
   return (
     <main class="page">
-      <Title>About — Sequence</Title>
+      <Title>About — Hilera</Title>
       <MemphisBackdrop />
       <div class="page-inner">
         <A class="page-back" href="/">
@@ -13,7 +13,7 @@ export default function About() {
         </A>
         <h1 class="page-title">About</h1>
         <p class="mt-6 max-w-2xl text-lg font-medium leading-relaxed">
-          Sequence is a two-player card-and-board game. Play a card, place a
+          Hilera is a two-player card-and-board game. Play a card, place a
           chip on a matching space, and draw a replacement. Five chips in a row
           make a sequence — claim two sequences and the game is yours.
         </p>

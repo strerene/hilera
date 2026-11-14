@@ -6,7 +6,7 @@ import { MemphisBackdrop } from "~/components/ui/Memphis";
 export default function NotFound() {
   return (
     <main class="page">
-      <Title>Not Found — Sequence</Title>
+      <Title>Not Found — Hilera</Title>
       <HttpStatusCode code={404} />
       <MemphisBackdrop />
       <div class="page-inner flex min-h-[70dvh] flex-col items-start justify-center">

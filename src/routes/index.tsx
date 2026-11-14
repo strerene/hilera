@@ -9,7 +9,7 @@ import "./index.css";
 const MARQUEE_ITEMS = [
   "Play",
   "Share",
-  "Sequence",
+  "Hilera",
   "Five in a row",
   "No sign-up",
   "Two players",
@@ -64,7 +64,7 @@ function extractRoomId(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   try {
-    const url = new URL(trimmed, "http://sequence.local");
+    const url = new URL(trimmed, "http://hilera.local");
     const id = url.searchParams.get("id");
     if (id?.trim()) return id.trim();
   } catch {
@@ -110,7 +110,7 @@ export default function Home() {
 
   return (
     <main class="landing">
-      <Title>Sequence — five in a row, online</Title>
+      <Title>Hilera — five in a row, online</Title>
       <MemphisBackdrop />
 
       <div class="landing-inner">
@@ -119,7 +119,7 @@ export default function Home() {
             <span class="landing-logo-mark" aria-hidden="true">
               ✦
             </span>
-            Sequence
+            Hilera
           </A>
           <div class="landing-nav-links">
             <a href="#how">How to play</a>
@@ -133,13 +133,13 @@ export default function Home() {
               2 players · no sign-up · peer-to-peer
             </span>
             <h1 class="landing-title">
-              <span class="landing-title-main">Sequence</span>
+              <span class="landing-title-main">Hilera</span>
               <span class="landing-title-sub">Five in a row wins</span>
             </h1>
             <p class="landing-lede">
-              The classic card-and-board game, rebuilt for the browser. Create a
-              room, send the link to a friend, and race to claim two sequences
-              before they do.
+              A card-and-board game, rebuilt for the browser. Create a room,
+              send the link to a friend, and race to claim two sequences before
+              they do.
             </p>
             <div class="landing-actions">
               <button
@@ -274,7 +274,7 @@ export default function Home() {
 
       <footer class="landing-footer">
         <div class="landing-footer-inner">
-          <span class="font-display text-lg uppercase">Sequence</span>
+          <span class="font-display text-lg uppercase">Hilera</span>
           <p class="text-sm">
             Built with SolidStart + WebRTC. No game server, no tracking.
           </p>

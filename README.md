@@ -1,6 +1,8 @@
-# SolidStart
+# Hilera
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+Two-player online card-and-board game: race to claim two sequences of five.
+Built with [SolidStart](https://start.solidjs.com) and played peer-to-peer in
+the browser over WebRTC (PeerJS) — no game server.
 
 ## Styling
 

@@ -1,5 +1,5 @@
 {
-  "name": "example-basic",
+  "name": "hilera",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
