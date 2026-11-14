@@ -39,7 +39,7 @@
     "name": "routing"
   },
   "src/entry-client.tsx": {
-    "file": "_build/assets/entry-client-CMyL37iz.js",
+    "file": "_build/assets/entry-client-DWYcbRfP.js",
     "name": "entry-client",
     "src": "src/entry-client.tsx",
     "isEntry": true,
@@ -54,11 +54,11 @@
       "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx"
     ],
     "css": [
-      "_build/assets/entry-client-C8n4nFED.css"
+      "_build/assets/entry-client-beVqjnJ8.css"
     ]
   },
   "src/routes/[...404].tsx?pick=default&pick=$css&lang.tsx": {
-    "file": "_build/assets/_...404_-n2bsUaQH.js",
+    "file": "_build/assets/_...404_-DSWknlOK.js",
     "name": "_...404_",
     "src": "src/routes/[...404].tsx?pick=default&pick=$css&lang.tsx",
     "isEntry": true,
@@ -69,7 +69,7 @@
     ]
   },
   "src/routes/about.tsx?pick=default&pick=$css&lang.tsx": {
-    "file": "_build/assets/about-fMhsA-b8.js",
+    "file": "_build/assets/about-DZyLDr6M.js",
     "name": "about",
     "src": "src/routes/about.tsx?pick=default&pick=$css&lang.tsx",
     "isEntry": true,
@@ -79,7 +79,7 @@
     ]
   },
   "src/routes/index.tsx?pick=default&pick=$css&lang.tsx": {
-    "file": "_build/assets/index-d8oiX55j.js",
+    "file": "_build/assets/index-Cn_JWdw4.js",
     "name": "index",
     "src": "src/routes/index.tsx?pick=default&pick=$css&lang.tsx",
     "isEntry": true,
@@ -93,7 +93,7 @@
     ]
   },
   "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx": {
-    "file": "_build/assets/index-DL-WKjLM.js",
+    "file": "_build/assets/index-CsJ46ZHo.js",
     "name": "index",
     "src": "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx",
     "isEntry": true,
