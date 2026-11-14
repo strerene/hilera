@@ -8,7 +8,18 @@ export default createHandler(() => (
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.ico`} />
+          {/* SVG first (crisp at any size); the .ico is the raster fallback
+              for browsers without SVG favicon support (Safari). */}
+          <link
+            rel="icon"
+            href={`${import.meta.env.BASE_URL}favicon.svg`}
+            type="image/svg+xml"
+          />
+          <link
+            rel="alternate icon"
+            href={`${import.meta.env.BASE_URL}favicon.ico`}
+            sizes="16x16 32x32 48x48 64x64"
+          />
           {/* Display + body faces for the neobrutalist skin. Fallbacks in
               app.css keep the app readable if the CDN is unreachable. */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
