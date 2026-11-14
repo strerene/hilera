@@ -28,7 +28,7 @@ export default function GameResultDialog(props: {
     <Show when={status()}>
       <div class="modal modal-open">
         <div class="modal-box text-center">
-          <h3 class="text-lg font-bold">Game over</h3>
+          <h3 class="font-display text-2xl uppercase">Game over</h3>
           <Show
             when={!status()!.draw}
             fallback={<p class="mt-4 text-xl font-semibold">Board full — it's a draw!</p>}

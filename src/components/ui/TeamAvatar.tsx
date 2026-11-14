@@ -4,8 +4,8 @@ import type { ChipColor } from "~/lib/sequence";
 // Team colors are the chip colors, not daisyUI theme colors, so they are
 // pinned to the same values as the board chips in SequenceGame.css.
 const TEAM_BG: Record<ChipColor, string> = {
-  blue: "bg-[#2b5f9e]",
-  green: "bg-[#3d8b4f]",
+  blue: "bg-[#2f6bff]",
+  green: "bg-[#22a34a]",
 };
 
 export default function TeamAvatar(props: {
@@ -14,14 +14,11 @@ export default function TeamAvatar(props: {
   label?: string;
 }) {
   return (
-    <div class="avatar avatar-placeholder">
-      <div
-        class={`w-7 rounded-full text-white ${TEAM_BG[props.color] ?? "bg-neutral"}`}
-      >
-        <Show when={props.label}>
-          {(label) => <span class="text-xs font-bold uppercase">{label()}</span>}
-        </Show>
-      </div>
-    </div>
+    <span
+      class={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-[3px] border-ink text-xs font-bold uppercase text-white shadow-[2px_2px_0_#141414] ${TEAM_BG[props.color] ?? "bg-neutral"}`}
+      aria-hidden="true"
+    >
+      <Show when={props.label}>{(label) => label()}</Show>
+    </span>
   );
 }

@@ -10,6 +10,21 @@
     width: 100%;
     height: 100%;
     margin: 0 auto;
+
+    /* Board size cap, shared by the board and the hand cards so the hand
+       scales with the board instead of the viewport. On mobile the hand
+       stacks below the board, so the cap also reserves room for it. */
+    --seq-board-cap: calc(100dvh - 19rem);
+
+    /* Hand card width: ~1.25 board cells (a 10-column board, so board / 8),
+       capped so a full 7-card hand still fits on one row (11.5cqw of the
+       hand column). The board-cap term keeps the cards proportional when the
+       board is height-limited (short windows) rather than width-limited. */
+    --seq-hand-card-width: clamp(
+        2.2rem,
+        min(11.5cqw, calc(var(--seq-board-cap) / 8)),
+        6rem
+    );
 }
 
 /* Mobile: header, board and hand stack vertically, so keep the row gaps
@@ -33,69 +48,109 @@
             "header header"
             "board hand";
         gap: 2rem;
+
+        /* The hand sits beside the board, so only the header shares the
+           viewport height. The side column is narrow, so cards wrap 4 + 3. */
+        --seq-board-cap: calc(100dvh - 9rem);
+        --seq-hand-card-width: clamp(
+            2.2rem,
+            min(22cqw, calc(var(--seq-board-cap) / 8)),
+            6rem
+        );
     }
 }
 
 /* --- Header ------------------------------------------------------------------ */
 
+/* One line, always: the players area absorbs the shrink (names ellipsize)
+   while the info/leave controls keep their size, so the header never wraps
+   on narrow screens. */
 .seq-header {
     grid-area: header;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     width: 100%;
-    padding: 0.5em 1em;
-    background: rgba(68, 107, 158, 0.06);
-    border-radius: 0.5em;
+    padding: 0.6em 1em;
+    background: var(--color-base-100);
+    border: 3px solid var(--color-ink);
+    border-radius: 0.75rem;
+    box-shadow: 4px 4px 0 var(--color-ink);
     text-align: left;
 }
 
 .seq-players {
     display: flex;
-    flex-wrap: wrap;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    min-width: 0;
 }
 
 .seq-player {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    min-width: 0;
     font-size: 0.9rem;
+    font-weight: 600;
 }
 
-.seq-player.offline {
+/* Long player names ellipsize instead of pushing the header onto a second
+   line. */
+.seq-player-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Connection is the default, so it gets no label; a disconnected player is
+   dimmed and flagged with a red badge. */
+.seq-player.offline .seq-player-name {
     opacity: 0.55;
 }
 
-.seq-player-status {
-    font-size: 0.75rem;
-    color: #666;
-}
-
-.seq-dot {
-    width: 0.65em;
-    height: 0.65em;
-    border-radius: 50%;
+.seq-player-tag {
     flex-shrink: 0;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #555555;
 }
 
-.seq-dot.blue {
-    background: #2b5f9e;
+.seq-player-tag.offline {
+    padding: 0.05em 0.35em;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.3rem;
+    background: var(--color-error);
+    color: #ffffff;
 }
 
-.seq-dot.green {
-    background: #3d8b4f;
-}
+/* Turn info lives in the secondary (hand) column, above the cards.
 
-/* Turn info lives in the secondary (hand) column, above the cards. */
+   The box is a fixed slot, not a content-sized one: the prompt text changes
+   length every turn (and wraps differently as the column narrows), and the
+   end-of-game message is a single short line. Sizing to content made the box
+   grow and shrink as cards were selected, so span the hand column (the flex
+   column would otherwise shrink-wrap it) and reserve the tallest state —
+   avatar row plus a two-line hint — centring whatever is inside. */
 .seq-status {
+    display: grid;
+    align-content: center;
+    width: 100%;
+    min-height: 5.6rem;
     font-weight: 600;
-    min-height: 1.4em;
     text-align: center;
-    padding: 0 0.5em;
+    padding: 0.5em 0.9em;
+    background: var(--color-base-100);
+    border: 3px solid var(--color-ink);
+    border-radius: 0.6rem;
+    box-shadow: 3px 3px 0 var(--color-ink);
 }
 
 .seq-turn {
@@ -107,16 +162,32 @@
 }
 
 .seq-turn-label {
-    color: #666;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #555555;
+}
+
+/* Long names ellipsize instead of wrapping the avatar row onto a second
+   line, which would push the fixed-height status box taller. */
+.seq-turn-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* The contextual prompt ("Your turn — play a card", waiting message, …)
-   wraps onto its own muted line beneath the avatar row. */
+   wraps onto its own muted line beneath the avatar row. The line-height is
+   pinned so the two lines reserved by .seq-status are exactly what a wrapped
+   hint occupies. */
 .seq-turn-hint {
     width: 100%;
     font-size: 0.8rem;
-    font-weight: 400;
-    color: #666;
+    font-weight: 500;
+    line-height: 1.25;
+    color: #444444;
 }
 
 /* --- Board --------------------------------------------------------------------- */
@@ -131,25 +202,20 @@
 .seq-board {
     grid-area: board;
     display: grid;
-    grid-template-columns: repeat(10, minmax(28px, 1fr));
+    grid-template-columns: repeat(10, minmax(24px, 1fr));
     grid-auto-rows: 1fr;
     aspect-ratio: 1;
-    width: min(100%, calc(100dvh - 18rem));
+    width: min(100%, var(--seq-board-cap));
     justify-self: center;
     gap: 2px;
     padding: 6px;
-    background: rgba(68, 107, 158, 0.08);
-    border-radius: 0.5em;
+    background: var(--color-base-100);
+    border: 3px solid var(--color-ink);
+    border-radius: 0.75rem;
+    box-shadow: 6px 6px 0 var(--color-ink);
     user-select: none;
 }
 
-/* On wide screens the hand sits beside the board, so only the header
-   shares the viewport height and the board can use more of it. */
-@media (min-width: 64rem) {
-    .seq-board {
-        width: min(100%, calc(100dvh - 9rem));
-    }
-}
 
 .seq-cell {
     position: relative;
@@ -157,30 +223,30 @@
     align-items: center;
     justify-content: center;
     font-size: clamp(0.5rem, 1.6vw, 1rem);
+    border: 2px solid var(--color-ink);
     border-radius: 4px;
-    background: #fffdf7;
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    background: #fffdf5;
 }
 
 .seq-cell.red {
-    color: #b3403a;
+    color: #e03131;
 }
 
 .seq-cell.black {
-    color: #222;
+    color: var(--color-ink);
 }
 
 .seq-cell.free {
-    background: rgba(68, 107, 158, 0.15);
+    background: var(--color-brutal-yellow);
 }
 
 .seq-free-glyph {
-    opacity: 0.6;
+    opacity: 0.8;
 }
 
 .seq-cell.legal {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
+    outline: 3px solid var(--color-primary);
+    outline-offset: -3px;
     cursor: pointer;
 }
 
@@ -189,12 +255,13 @@
 }
 
 .seq-cell.interactive:hover {
-    background: rgba(68, 107, 158, 0.2);
+    outline-color: var(--color-secondary);
+    background: #ffe3ec;
 }
 
 @keyframes seq-flash {
     50% {
-        background: rgba(255, 215, 0, 0.7);
+        background: var(--color-brutal-yellow);
     }
 }
 
@@ -206,9 +273,9 @@
 @keyframes seq-flash-chip {
     50% {
         box-shadow:
-            0 0 0 5px rgba(255, 215, 0, 0.85),
-            0 1px 2px rgba(0, 0, 0, 0.35),
-            inset 0 0 0 2px rgba(255, 215, 0, 0.9);
+            0 0 0 5px var(--color-brutal-yellow),
+            2px 2px 0 var(--color-ink),
+            inset 0 0 0 3px var(--color-brutal-yellow);
     }
 }
 
@@ -226,8 +293,8 @@
 @keyframes seq-last-move-chip {
     50% {
         box-shadow:
-            0 0 0 4px rgba(255, 215, 0, 0.8),
-            0 1px 2px rgba(0, 0, 0, 0.35);
+            0 0 0 4px var(--color-brutal-yellow),
+            2px 2px 0 var(--color-ink);
     }
 }
 
@@ -237,8 +304,8 @@
 @keyframes seq-last-move-cell {
     50% {
         box-shadow:
-            0 0 0 5px rgba(255, 215, 0, 0.6),
-            inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+            0 0 0 5px var(--color-brutal-yellow),
+            inset 0 0 0 2px var(--color-ink);
     }
 }
 
@@ -254,22 +321,22 @@
     position: absolute;
     inset: 15%;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    border: 2px solid var(--color-ink);
+    box-shadow: 2px 2px 0 var(--color-ink);
 }
 
 .seq-chip.blue {
-    background: #2b5f9e;
+    background: var(--color-team-blue);
 }
 
 .seq-chip.green {
-    background: #3d8b4f;
+    background: var(--color-team-green);
 }
 
 .seq-chip.locked {
     box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.35),
-        inset 0 0 0 2px rgba(255, 215, 0, 0.9);
+        2px 2px 0 var(--color-ink),
+        inset 0 0 0 3px var(--color-brutal-yellow);
 }
 
 /* --- Hand ---------------------------------------------------------------------- */
@@ -280,6 +347,10 @@
     flex-direction: column;
     align-items: center;
     gap: 0.6rem;
+    /* Size container for the hand cards: they size in cqw so they track the
+       hand's own column (the board column on mobile, the side column on wide
+       screens) instead of the viewport. */
+    container-type: inline-size;
 }
 
 .seq-hand {
@@ -289,22 +360,20 @@
     gap: 0.5rem;
 }
 
-/* On wide screens the hand occupies the narrow right-hand column. Cap its
-   width at 4 cards (plus gaps) so a full 7-card hand wraps into exactly
-   two rows (4 + 3) instead of growing a third. */
+/* On wide screens the hand occupies the narrow right-hand column. The card
+   width (22cqw) is tuned so a full 7-card hand wraps into exactly two rows
+   (4 + 3) instead of growing a third. */
 @media (min-width: 64rem) {
     .seq-hand {
         margin-top: 2rem;
-        max-width: calc(4 * clamp(2.8rem, 6.5vw, 4.5rem) + 1.5rem);
     }
 }
 
-/* Card size scales with the viewport (capped so a 7-card hand stays on
-   one row) so the hand adapts to narrow windows; height derives from the
-   width via aspect-ratio. */
+/* Card width tracks the board (see --seq-hand-card-width); height derives
+   from the width via aspect-ratio. */
 .seq-hand-card {
     position: relative;
-    width: clamp(2.8rem, 6.5vw, 4.5rem);
+    width: var(--seq-hand-card-width);
     aspect-ratio: 7 / 10;
     display: flex;
     flex-direction: column;
@@ -313,68 +382,94 @@
     gap: 0.15rem;
     font-family: inherit;
     font-size: clamp(0.95rem, 2vw, 1.3rem);
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 0.4em;
-    background: #fffdf7;
+    border: 3px solid var(--color-ink);
+    border-radius: 0.5rem;
+    background: #fffdf5;
+    box-shadow: 3px 3px 0 var(--color-ink);
     cursor: pointer;
+    transition:
+        transform 120ms ease,
+        box-shadow 120ms ease,
+        border-color 120ms ease;
 }
 
 .seq-hand-card.red {
-    color: #b3403a;
+    color: #e03131;
 }
 
 .seq-hand-card.black {
-    color: #222;
+    color: var(--color-ink);
 }
 
 .seq-hand-card:disabled {
     cursor: default;
-    opacity: 0.75;
+    opacity: 0.7;
+    box-shadow: 2px 2px 0 var(--color-ink);
 }
 
-.seq-hand-card.playable:not(:disabled):hover {
-    border-color: var(--color-primary);;
+.seq-hand-card.playable:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--color-ink);
 }
 
-.seq-hand-card.selected {
-    outline: 2px solid var(--color-primary);;
-    transform: translateY(-4px);
+.seq-hand-card.selected,
+.seq-hand-card.selected:hover {
+    border-color: var(--color-primary);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--color-ink);
 }
 
 .seq-hand-card.dead {
-    opacity: 0.5;
+    opacity: 0.45;
+    filter: grayscale(1);
 }
 
 .seq-dead-tag {
     position: absolute;
-    top: -0.5em;
-    right: -0.4em;
+    top: -0.55em;
+    right: -0.45em;
+    padding: 0.1em 0.35em;
     font-size: 0.6rem;
-    padding: 0.1em 0.4em;
-    border-radius: 1em;
-    background: #b3403a;
-    color: #fff;
-}
-
-/* Small screens: shrink a bit faster so 7 cards still wrap neatly. */
-@media (max-width: 30rem) {
-    .seq-hand-card {
-        width: clamp(2.4rem, 14vw, 3.8rem);
-        font-size: clamp(0.8rem, 4.5vw, 1.2rem);
-    }
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.35rem;
+    background: var(--color-error);
+    color: #ffffff;
+    box-shadow: 2px 2px 0 var(--color-ink);
 }
 
 .seq-button {
     font-family: inherit;
-    padding: 0.35em 1em;
-    color: #335d92;
-    background-color: rgba(68, 107, 158, 0.1);
-    border: none;
-    border-radius: 2em;
+    padding: 0.5em 1em;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-primary-content);
+    background-color: var(--color-primary);
+    border: 3px solid var(--color-ink);
+    border-radius: 0.5rem;
+    box-shadow: 3px 3px 0 var(--color-ink);
     cursor: pointer;
+    transition:
+        transform 120ms ease,
+        box-shadow 120ms ease;
+}
+
+.seq-button:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+.seq-button:active:not(:disabled) {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--color-ink);
 }
 
 .seq-button:disabled {
     opacity: 0.5;
     cursor: default;
+    box-shadow: none;
+    transform: none;
 }

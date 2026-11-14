@@ -2,13 +2,13 @@
     /* Size container: the face below scales every dimension in cqw, so one
        stylesheet serves both variants at any size the parent gives the card */
     container-type: inline-size;
-    color: #222;
+    color: var(--color-ink);
 }
 
 /* Hearts/diamonds: corners and center suit go classic card red; the center
-   rank overlay stays white (it sets its own color below) */
+   rank overlay stays cream (it sets its own color below) */
 .card-red {
-    color: #b3403a;
+    color: #e03131;
 }
 
 /* Board face: square, corners dropped so the center reads at cell size */
@@ -31,37 +31,88 @@
     display: grid;
 
     /* Fixed corner rows (16% of the card width); the middle '1fr' claims
-     the remaining height. Children auto-place top-to-bottom into a single column. */
-    grid-template-rows: 16cqw 1fr 16cqw;
+       the remaining height. Children auto-place top-to-bottom into a single column. */
+    grid-template-rows: 24cqw 1fr 24cqw;
     width: 100%;
     height: 100%;
     box-sizing: border-box;
     padding: 4.8cqw;
 
     /* Presentation styling */
-    background-color: #ffffff;
+    background-color: #fffdf5;
     border-radius: 4.8cqw;
 }
 
-/* Corners */
+/* Corners: rank stacked above the suit pip, left-aligned like a real card */
 .card-corner {
     display: flex;
-    align-items: center;
-    font-size: 14cqw;
-    font-weight: bold;
-
-    /*use all four corners*/
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.5cqw;
     height: 100%;
-    justify-content: space-between;
+    font-family: var(--font-display);
+    font-size: 13cqw;
+    line-height: 1;
 }
 
+.card-corner-rank {
+    letter-spacing: -0.04em;
+}
+
+.card-corner-suit {
+    width: 10cqw;
+    height: 10cqw;
+    flex-shrink: 0;
+}
+
+/* Center */
 .card-center {
     position: relative;
     place-self: center;
-    /* Suit glyph kept ~3.75x the rank overlay so the white rank sits fully
-       on the solid body of the glyph instead of spilling over its edges */
-    font-size: 78cqw;
+    display: grid;
+    place-items: center;
+    width: 78cqw;
+    height: 78cqw;
+}
+
+.card-center-suit {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Rank overlaid on the suit, centered in the same box. Cream keeps it legible
+   on both the red and ink suit fills; the tiny shadow separates the two. */
+.card-rank {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 2cqw;
+    font-family: var(--font-display);
+    font-size: 26cqw;
     line-height: 1;
+    letter-spacing: -0.05em;
+    color: #fffdf5;
+    text-shadow: 1px 1px 0 rgba(20, 20, 20, 0.35);
+}
+
+/* Board cells are tiny, so the rank gets a larger share of the face. */
+.card-square-small .card-rank {
+    font-size: 30cqw;
+}
+
+.card-full .card-rank {
+    font-size: 24cqw;
+}
+
+/* The heart's visual mass sits above the box center (wide lobes, pointed
+   bottom). Scale and nudge the icon itself — never the rank — so every rank
+   stays on the same baseline across a mixed-suit row. */
+.suit-heart .card-center-suit {
+    transform: translateY(5cqw) scale(0.9);
 }
 
 /* Special center piece: face art in the suit color, small suit pip below */
@@ -70,6 +121,8 @@
     flex-direction: column;
     align-items: center;
     gap: 4.8cqw;
+    width: auto;
+    height: auto;
 }
 
 .special-face {
@@ -80,17 +133,4 @@
     display: block;
     width: 100%;
     height: auto;
-}
-
-/* Rank overlaid on the suit, centered in the same box */
-.card-rank {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    font-size: 25cqw;
-    font-weight: bold;
-    top: 1px;
 }

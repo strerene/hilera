@@ -1,7 +1,77 @@
 import { Title } from "@solidjs/meta";
-import { useNavigate } from "@solidjs/router";
-import { createSignal, Show } from "solid-js";
+import { A, useNavigate } from "@solidjs/router";
+import { createSignal, For, Show } from "solid-js";
+import PlayingCard from "~/components/ui/PlayingCard";
+import { MemphisBackdrop } from "~/components/ui/Memphis";
 import { createRoom } from "~/lib/p2p";
+import "./index.css";
+
+const MARQUEE_ITEMS = [
+  "Play",
+  "Share",
+  "Sequence",
+  "Five in a row",
+  "No sign-up",
+  "Two players",
+];
+
+const STEPS = [
+  {
+    tone: "pink",
+    title: "Create a room",
+    body: "Hit create and your browser becomes the host. No account, no install, no game server.",
+  },
+  {
+    tone: "blue",
+    title: "Share the link",
+    body: "Send the invite link to a friend. They land straight in your lobby, ready to play.",
+  },
+  {
+    tone: "yellow",
+    title: "Race to five",
+    body: "Play a card, place a chip, draw a new one. Claim two sequences before your rival does.",
+  },
+] as const;
+
+const FEATURES = [
+  {
+    icon: "🔒",
+    title: "Private rooms",
+    body: "Only people with the invite link can join your table.",
+  },
+  {
+    icon: "⚡",
+    title: "Peer-to-peer",
+    body: "Moves travel directly between browsers over WebRTC.",
+  },
+  {
+    icon: "🔁",
+    title: "Instant rematch",
+    body: "One click resets the board for another round.",
+  },
+  {
+    icon: "🛡️",
+    title: "Fair play",
+    body: "The host validates every move before it reaches the board.",
+  },
+] as const;
+
+/**
+ * Accept either a raw room id or a full invite link. Links carry the id in
+ * their `?id=` query param, so pasting the shared URL just works.
+ */
+function extractRoomId(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed, "http://sequence.local");
+    const id = url.searchParams.get("id");
+    if (id?.trim()) return id.trim();
+  } catch {
+    // Not a URL — fall through and treat the input as a raw room id.
+  }
+  return trimmed;
+}
 
 export default function Home() {
   const navigate = useNavigate();
@@ -21,7 +91,7 @@ export default function Home() {
 
   const handleJoinRoom = (event: SubmitEvent) => {
     event.preventDefault();
-    const id = joinId().trim();
+    const id = extractRoomId(joinId());
     if (!id) return;
     navigate(`/room?id=${encodeURIComponent(id)}`);
   };
@@ -39,44 +109,190 @@ export default function Home() {
   };
 
   return (
-    <main class="flex min-h-screen items-center justify-center bg-base-300">
-      <Title>Sequence</Title>
-      <div class="card bg-base-100 w-96 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title">Play Sequence</h2>
-          <p>
-            Play the popular sequence card/board game. Either create a room, or
-            join by pasting a shared link
-          </p>
-          <div class="card-actions justify-end mt-6">
-            <button
-              class="btn"
-              disabled={creating()}
-              onClick={openJoinDialog}
-              type="button"
-            >
-              {"Join room"}
-            </button>
-            <button
-              class="btn btn-primary"
-              onClick={handleCreateRoom}
-              disabled={creating()}
-              type="button"
-            >
-              {creating() ? "Creating room…" : "Create room"}
-            </button>
+    <main class="landing">
+      <Title>Sequence — five in a row, online</Title>
+      <MemphisBackdrop />
+
+      <div class="landing-inner">
+        <nav class="landing-nav">
+          <A class="landing-logo" href="/">
+            <span class="landing-logo-mark" aria-hidden="true">
+              ✦
+            </span>
+            Sequence
+          </A>
+          <div class="landing-nav-links">
+            <a href="#how">How to play</a>
+            <A href="/about">About</A>
           </div>
+        </nav>
+
+        <section class="landing-hero">
+          <div>
+            <span class="landing-kicker">
+              2 players · no sign-up · peer-to-peer
+            </span>
+            <h1 class="landing-title">
+              <span class="landing-title-main">Sequence</span>
+              <span class="landing-title-sub">Five in a row wins</span>
+            </h1>
+            <p class="landing-lede">
+              The classic card-and-board game, rebuilt for the browser. Create a
+              room, send the link to a friend, and race to claim two sequences
+              before they do.
+            </p>
+            <div class="landing-actions">
+              <button
+                class="btn btn-primary btn-lg"
+                disabled={creating()}
+                onClick={handleCreateRoom}
+                type="button"
+              >
+                {creating() ? "Creating room…" : "Create room"}
+              </button>
+              <button
+                class="btn btn-secondary btn-lg"
+                disabled={creating()}
+                onClick={openJoinDialog}
+                type="button"
+              >
+                Join room
+              </button>
+            </div>
+            <p class="landing-note">
+              No account · no install
+            </p>
+            <Show when={error()}>
+              {(message) => (
+                <p class="alert alert-error mt-6" role="alert">
+                  {message()}
+                </p>
+              )}
+            </Show>
+          </div>
+
+          <div class="landing-art" aria-hidden="true">
+            <div class="landing-art-blob" />
+            <div class="landing-art-fan">
+              <div class="landing-art-card landing-art-card--1">
+                <PlayingCard card={{ rank: "A", suit: "S" }} variant="full" />
+              </div>
+              <div class="landing-art-card landing-art-card--2">
+                <PlayingCard card={{ rank: "7", suit: "H" }} variant="full" />
+              </div>
+              <div class="landing-art-card landing-art-card--3">
+                <PlayingCard card={{ rank: "J", suit: "D" }} variant="full" />
+              </div>
+            </div>
+            <span class="landing-art-chip landing-art-chip--blue" />
+            <span class="landing-art-chip landing-art-chip--green" />
+            <span class="landing-art-sticker">5 in a row</span>
+            <svg
+              class="landing-art-zigzag"
+              viewBox="0 0 100 40"
+              fill="none"
+              aria-hidden="true"
+            >
+              <polyline
+                points="4,30 20,10 36,30 52,10 68,30 84,10 96,24"
+                stroke="currentColor"
+                stroke-width="8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+        </section>
+      </div>
+
+      <div class="landing-marquee" aria-hidden="true">
+        <div class="landing-marquee-track">
+          <For each={[0, 1]}>
+            {() => (
+              <div class="landing-marquee-group">
+                <For each={MARQUEE_ITEMS}>
+                  {(item) => (
+                    <span class="landing-marquee-item">
+                      {item}
+                      <span>✦</span>
+                    </span>
+                  )}
+                </For>
+              </div>
+            )}
+          </For>
         </div>
       </div>
 
+      <div class="landing-inner">
+        <section id="how" class="landing-section">
+          <div class="landing-section-head">
+            <h2 class="landing-section-title">
+              How it <em>works</em>
+            </h2>
+            <p class="landing-section-lede">
+              Three steps, zero setup. The host tab is the authority — no game
+              server in the middle.
+            </p>
+          </div>
+          <div class="landing-steps">
+            <For each={STEPS}>
+              {(step, index) => (
+                <article class={`landing-step landing-step--${step.tone}`}>
+                  <span class="landing-step-num">
+                    {String(index() + 1).padStart(2, "0")}
+                  </span>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </article>
+              )}
+            </For>
+          </div>
+        </section>
+
+        <section class="landing-section">
+          <div class="landing-section-head">
+            <h2 class="landing-section-title">
+              What you <em>get</em>
+            </h2>
+          </div>
+          <div class="landing-features">
+            <For each={FEATURES}>
+              {(feature) => (
+                <article class="landing-feature">
+                  <span class="landing-feature-icon" aria-hidden="true">
+                    {feature.icon}
+                  </span>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.body}</p>
+                </article>
+              )}
+            </For>
+          </div>
+        </section>
+      </div>
+
+      <footer class="landing-footer">
+        <div class="landing-footer-inner">
+          <span class="font-display text-lg uppercase">Sequence</span>
+          <p class="text-sm">
+            Built with SolidStart + WebRTC. No game server, no tracking.
+          </p>
+          <A href="/about">About the game →</A>
+        </div>
+      </footer>
+
       <dialog class="modal" ref={joinDialog}>
         <div class="modal-box">
-          <h3 class="mb-4 text-lg font-bold">Join a room</h3>
-          <form class="room-join" onSubmit={handleJoinRoom}>
+          <h3 class="font-display text-2xl uppercase">Join a room</h3>
+          <p class="mt-2 text-sm font-medium text-base-content/70">
+            Paste the invite link your friend sent, or type the room ID.
+          </p>
+          <form class="mt-5" onSubmit={handleJoinRoom}>
             <input
-              class="input input-bordered w-full"
+              class="input w-full"
               onInput={(e) => setJoinId(e.currentTarget.value)}
-              placeholder="Room ID"
+              placeholder="Room ID or invite link"
               type="text"
               value={joinId()}
             />
@@ -90,7 +306,7 @@ export default function Home() {
               </button>
               <button
                 class="btn btn-primary"
-                disabled={!joinId().trim()}
+                disabled={!extractRoomId(joinId())}
                 type="submit"
               >
                 Join room
@@ -102,10 +318,6 @@ export default function Home() {
           <button type="button">close</button>
         </form>
       </dialog>
-
-      <Show when={error()}>
-        {(message) => <p class="room-error">{message()}</p>}
-      </Show>
     </main>
   );
 }

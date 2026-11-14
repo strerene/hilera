@@ -34,7 +34,7 @@ export default function RoomRoute() {
   });
 
   return (
-    <main class="flex min-h-screen items-center justify-center bg-base-300 p-4">
+    <main class="flex min-h-screen items-center justify-center p-4">
       <Title>Sequence</Title>
       <Show when={mounted()}>
         <Show

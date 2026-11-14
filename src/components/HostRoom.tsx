@@ -256,6 +256,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
             onPropose={(type, payload) =>
               applyAction("blue", { type, payload })
             }
+            onLeave={leave}
           />
           <GameResultDialog
             state={gameState()}
@@ -266,14 +267,40 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
         </div>
       }
     >
-      <section class="card bg-base-100 shadow-xl w-full max-w-2xl">
+      <section class="card w-full max-w-2xl bg-base-100">
         <div class="card-body">
-          <div class="flex justify-between items-center">
-            <h2 class="text-3xl font-bold">Game Lobby</h2>
-            <span class="badge badge-xs badge-warning">{props.roomId}</span>
+          {/* One line, always: the controls are compact and the title never
+              wraps, so nothing can push the header onto a second row. */}
+          <div class="flex flex-nowrap items-center justify-between gap-3">
+            <h2 class="shrink-0 whitespace-nowrap font-display text-3xl uppercase tracking-tight">
+              Game Lobby
+            </h2>
+            {/* Leave sits top-right, matching the in-game header. */}
+            <button
+              class="btn btn-quiet btn-sm shrink-0"
+              onClick={leave}
+              type="button"
+            >
+              Leave
+            </button>
           </div>
-          <h3 class="card-title mt-6">Players ({conns().length + 1})</h3>
-          <ul class="space-y-2 text-sm mt-1.5">
+          {/* The lobby is where the id is actually useful (manual join,
+              debugging), so it lives here rather than in the header. */}
+          <div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span class="text-xs font-bold uppercase tracking-wider opacity-60">
+              Room ID
+            </span>
+            <span class="select-all break-all font-mono text-xs font-semibold">
+              {props.roomId}
+            </span>
+          </div>
+          <p class="mt-2 text-sm font-medium text-base-content/70">
+            Share the invite link — your friend joins straight into this lobby.
+          </p>
+          <h3 class="card-title mt-6 font-display uppercase">
+            Players ({conns().length + 1})
+          </h3>
+          <ul class="mt-2 space-y-2 text-sm font-medium">
             <li class="flex items-center gap-2">
               <TeamAvatar color="blue" label="B" /> You (host)
             </li>
@@ -285,7 +312,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
               )}
             </For>
           </ul>
-          <div class="card-actions justify-end">
+          <div class="card-actions mt-6 justify-end">
             <button class="btn" onClick={copyRoomLink} type="button">
               {copiedLink() ? "Copied!" : "Copy link"}
             </button>

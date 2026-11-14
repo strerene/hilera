@@ -9,6 +9,7 @@ import {
 } from "~/lib/sequence";
 import TeamAvatar from "~/components/ui/TeamAvatar";
 import PlayingCard from "~/components/ui/PlayingCard";
+import RoomInfo from "~/components/ui/RoomInfo";
 import "./SequenceGame.css";
 
 const SUIT_RED: Record<Card["suit"], boolean> = { S: false, H: true, D: true, C: false };
@@ -127,9 +128,12 @@ export default function SequenceGame(props: {
   hand: Card[];
   /** Propose a game action (sent to the host, which validates and applies it). */
   onPropose: (type: string, payload?: unknown) => void;
+  /** Leave the room (wired to the header's exit control). */
+  onLeave?: () => void;
 }) {
   const s = () => props.state;
   const [selected, setSelected] = createSignal<number | null>(null);
+  let exitDialog: HTMLDialogElement | undefined;
   const [sequenceFlash, setSequenceFlash] = createSignal<ReadonlySet<number>>(new Set());
   const [lastMoveFlash, setLastMoveFlash] = createSignal<number | null>(null);
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
@@ -292,6 +296,13 @@ export default function SequenceGame(props: {
     return !!card && isDeadCard(s().board, card, myColor());
   };
 
+  // Leaving mid-game is destructive for the other player (the host's exit
+  // closes the room for both), so the header control asks first.
+  const confirmLeave = () => {
+    exitDialog?.close();
+    props.onLeave?.();
+  };
+
   /** Discard the selected dead card for a replacement (once per turn). */
   function exchangeSelectedDead() {
     const index = selected();
@@ -315,23 +326,40 @@ export default function SequenceGame(props: {
 
   return (
     <div class="seq">
-      {/* --- Header: players left, room badge right (like the lobby) --- */}
+      {/* --- Header: players left, info + leave right (like the lobby) --- */}
       <header class="seq-header">
         <div class="seq-players">
           <For each={props.players}>
             {(player) => (
               <span class="seq-player" classList={{ offline: !player.connected }}>
                 <TeamAvatar color={player.color} label={player.name.charAt(0)} />
-                {player.name}
-                <Show when={player.you}> (you)</Show>
-                <span class="seq-player-status">
-                  {player.connected ? "connected" : "disconnected"}
-                </span>
+                <span class="seq-player-name">{player.name}</span>
+                <Show when={player.you}>
+                  <span class="seq-player-tag">you</span>
+                </Show>
+                {/* Connected is the default, so only the exception is spelled
+                    out — keeps the header on one line on narrow screens. */}
+                <Show when={!player.connected}>
+                  <span class="seq-player-tag offline" title="Disconnected">
+                    offline
+                  </span>
+                </Show>
               </span>
             )}
           </For>
         </div>
-        <span class="badge badge-warning badge-sm font-mono">{props.roomId}</span>
+        {/* Same quiet controls, same top-right spot as the lobby's. */}
+        <RoomInfo roomId={props.roomId} />
+        <Show when={props.onLeave}>
+          <button
+            type="button"
+            class="btn btn-quiet btn-sm"
+            title="Leave this game"
+            onClick={() => exitDialog?.showModal()}
+          >
+            Leave
+          </button>
+        </Show>
       </header>
 
       {/* --- Board --- */}
@@ -360,7 +388,7 @@ export default function SequenceGame(props: {
               <div class="seq-turn">
                 <span class="seq-turn-label">Current turn:</span>
                 <TeamAvatar color={turnColor()} label={name(s().currentPlayerId).charAt(0)} />
-                <span>{name(s().currentPlayerId)}</span>
+                <span class="seq-turn-name">{name(s().currentPlayerId)}</span>
                 <span class="seq-turn-hint">{prompt()}</span>
               </div>
             }
@@ -401,6 +429,29 @@ export default function SequenceGame(props: {
           </button>
         </Show>
       </div>
+
+      {/* Exit confirmation. A native <dialog> keeps it out of the layout (and
+          out of the board's height budget) until it is opened. */}
+      <dialog ref={exitDialog} class="modal">
+        <div class="modal-box">
+          <h3 class="font-display text-xl uppercase">Leave the game?</h3>
+          <p class="mt-2 text-sm opacity-70">
+            {props.seat === "blue"
+              ? "You're the host — leaving closes the room for both players."
+              : "You can rejoin later with the invite link."}
+          </p>
+          <div class="modal-action">
+            <form method="dialog">
+              <button class="btn btn-ghost" type="submit">
+                Cancel
+              </button>
+            </form>
+            <button class="btn btn-error" type="button" onClick={confirmLeave}>
+              Leave
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }

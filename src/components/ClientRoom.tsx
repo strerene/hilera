@@ -198,8 +198,14 @@ export default function ClientRoom(props: { roomId: string }) {
       when={gameState().phase === "lobby"}
       fallback={
         <div class="flex min-h-[calc(100dvh-2rem)] w-full flex-col items-center gap-4">
+          {/* Floating status toast: fixed so a dropped connection never
+              reflows the height-constrained board. It overlays the header
+              (which has no controls) instead of pushing the game down. */}
           <Show when={status() !== "connected" || error()}>
-            <div class="alert alert-warning w-full max-w-2xl" role="alert">
+            <div
+              class="alert alert-warning pointer-events-none fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2"
+              role="alert"
+            >
               <Show
                 when={status() === "connecting" && !error()}
                 fallback={<span>Connection lost — reload the page to retry.</span>}
@@ -231,23 +237,48 @@ export default function ClientRoom(props: { roomId: string }) {
             ]}
             hand={hand()}
             onPropose={propose}
+            onLeave={leave}
           />
           <GameResultDialog state={gameState()} isHost={false} onLeave={leave} />
         </div>
       }
     >
-      <section class="card bg-base-100 shadow-xl w-full max-w-2xl">
+      <section class="card w-full max-w-2xl bg-base-100">
         <div class="card-body">
-          <div class="flex justify-between items-center">
-            <h2 class="text-3xl font-bold">Game Lobby</h2>
-            <span class="badge badge-xs badge-warning">{props.roomId}</span>
+          {/* One line, always: the controls are compact and the title never
+              wraps, so nothing can push the header onto a second row. */}
+          <div class="flex flex-nowrap items-center justify-between gap-3">
+            <h2 class="shrink-0 whitespace-nowrap font-display text-3xl uppercase tracking-tight">
+              Game Lobby
+            </h2>
+            {/* Leave sits top-right, matching the in-game header. */}
+            <button
+              class="btn btn-quiet btn-sm shrink-0"
+              onClick={leave}
+              type="button"
+            >
+              Leave
+            </button>
           </div>
+          {/* The lobby is where the id is actually useful (manual join,
+              debugging), so it lives here rather than in the header. */}
+          <div class="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span class="text-xs font-bold uppercase tracking-wider opacity-60">
+              Room ID
+            </span>
+            <span class="select-all break-all font-mono text-xs font-semibold">
+              {props.roomId}
+            </span>
+          </div>
+          <p class="mt-2 text-sm font-medium text-base-content/70">
+            You're connected to the host. The game starts when they're ready.
+          </p>
           {/* Two-player only: the client tab is itself a player, so the
               count is 2 once connected to the host. */}
-          <h3 class="card-title mt-6">
+          <h3 class="card-title mt-6 font-display uppercase">
             Players ({status() === "connected" ? 2 : 1})
           </h3>
-          <ul class="space-y-2 text-sm mt-1.5">
+          <ul class="mt-2 space-y-2 text-sm font-medium">
             <li class="flex items-center gap-2">
               <TeamAvatar color="blue" label="B" /> Host
             </li>

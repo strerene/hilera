@@ -9,7 +9,7 @@ export default function App() {
     <Router base={import.meta.env.BASE_URL}
       root={(props) => (
         <MetaProvider>
-          <Title>SolidStart - Basic</Title>
+          <Title>Sequence</Title>
           <Suspense>{props.children}</Suspense>
         </MetaProvider>
       )}
