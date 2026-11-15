@@ -39,7 +39,7 @@
     "name": "routing"
   },
   "src/entry-client.tsx": {
-    "file": "_build/assets/entry-client-DWYcbRfP.js",
+    "file": "_build/assets/entry-client-CCJaF3dA.js",
     "name": "entry-client",
     "src": "src/entry-client.tsx",
     "isEntry": true,
@@ -54,7 +54,7 @@
       "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx"
     ],
     "css": [
-      "_build/assets/entry-client-beVqjnJ8.css"
+      "_build/assets/entry-client-Cbasl_iY.css"
     ]
   },
   "src/routes/[...404].tsx?pick=default&pick=$css&lang.tsx": {
@@ -93,7 +93,7 @@
     ]
   },
   "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx": {
-    "file": "_build/assets/index-CsJ46ZHo.js",
+    "file": "_build/assets/index-6xJI7fOa.js",
     "name": "index",
     "src": "src/routes/room/index.tsx?pick=default&pick=$css&lang.tsx",
     "isEntry": true,
@@ -102,7 +102,7 @@
       "_p2p-ZGc97Zk6.js"
     ],
     "css": [
-      "_build/assets/index-DlNalEyt.css"
+      "_build/assets/index-C4QJvEeT.css"
     ]
   }
 }
