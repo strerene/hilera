@@ -231,7 +231,10 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
     <Show
       when={gameState().phase === "lobby"}
       fallback={
-        <div class="flex min-h-[calc(100dvh-2rem)] w-full flex-col items-center gap-4">
+        // Definite height so the game shell can fill it: the board sizes
+        // itself from the space that is actually left, not from viewport
+        // magic numbers.
+        <div class="flex h-[calc(100dvh-2rem)] w-full flex-col gap-4">
           <SequenceGame
             roomId={props.roomId}
             state={gameState()}

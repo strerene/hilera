@@ -34,7 +34,7 @@ export default function RoomRoute() {
   });
 
   return (
-    <main class="flex min-h-screen items-center justify-center p-4">
+    <main class="flex min-h-dvh items-center justify-center p-4">
       <Title>Hilera</Title>
       <Show when={mounted()}>
         <Show

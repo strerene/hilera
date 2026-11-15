@@ -197,7 +197,10 @@ export default function ClientRoom(props: { roomId: string }) {
     <Show
       when={gameState().phase === "lobby"}
       fallback={
-        <div class="flex min-h-[calc(100dvh-2rem)] w-full flex-col items-center gap-4">
+        // Definite height so the game shell can fill it: the board sizes
+        // itself from the space that is actually left, not from viewport
+        // magic numbers.
+        <div class="flex h-[calc(100dvh-2rem)] w-full flex-col gap-4">
           {/* Floating status toast: fixed so a dropped connection never
               reflows the height-constrained board. It overlays the header
               (which has no controls) instead of pushing the game down. */}

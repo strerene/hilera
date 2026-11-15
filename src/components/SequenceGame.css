@@ -1,4 +1,20 @@
+/* --- Game shell -------------------------------------------------------------
+
+   One grid, two arrangements, switched by ASPECT RATIO rather than width:
+
+   - Portrait / square-ish (phones, tablets held upright): header, board, hand
+     stacked. The header is content-sized, the hand sits on the bottom edge,
+     and the board takes whatever is left.
+   - Landscape (tablets and up): header on top, board and hand side by side,
+     the hand taking roughly a third of the width.
+
+   Aspect ratio is the right trigger because an iPad in portrait is wider than
+   a phone but still needs the stacked layout, while a phone in landscape has
+   no vertical room to stack at all. */
+
 .seq {
+    --seq-gap: 0.75rem;
+
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
@@ -6,56 +22,40 @@
         "header"
         "board"
         "hand";
-    gap: 2rem;
+    gap: var(--seq-gap);
     width: 100%;
     height: 100%;
+    min-height: 0;
     margin: 0 auto;
-
-    /* Board size cap, shared by the board and the hand cards so the hand
-       scales with the board instead of the viewport. On mobile the hand
-       stacks below the board, so the cap also reserves room for it. */
-    --seq-board-cap: calc(100dvh - 19rem);
-
-    /* Hand card width: ~1.25 board cells (a 10-column board, so board / 8),
-       capped so a full 7-card hand still fits on one row (11.5cqw of the
-       hand column). The board-cap term keeps the cards proportional when the
-       board is height-limited (short windows) rather than width-limited. */
-    --seq-hand-card-width: clamp(
-        2.2rem,
-        min(11.5cqw, calc(var(--seq-board-cap) / 8)),
-        6rem
-    );
 }
 
-/* Mobile: header, board and hand stack vertically, so keep the row gaps
-   tight to leave the (square, width-driven) board more height. */
-@media (max-width: 63.99rem) {
+@media (min-aspect-ratio: 1 / 1) {
     .seq {
-        gap: 1rem;
-    }
-}
+        --seq-gap: 1.25rem;
 
-/* Wide screens: hand sits to the right of the board in a fixed-width
-   secondary column; the board takes the remaining space. The game
-   stretches to the full wrapper height so the header sits at the very
-   top and the board/hand center vertically below it. */
-@media (min-width: 64rem) {
-    .seq {
-        flex: 1;
-        grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
         grid-template-areas:
             "header header"
             "board hand";
-        gap: 2rem;
+    }
+}
 
-        /* The hand sits beside the board, so only the header shares the
-           viewport height. The side column is narrow, so cards wrap 4 + 3. */
-        --seq-board-cap: calc(100dvh - 9rem);
-        --seq-hand-card-width: clamp(
-            2.2rem,
-            min(22cqw, calc(var(--seq-board-cap) / 8)),
-            6rem
+/* Large landscape: the board gets a bigger share of the width, and the shell
+   is capped to what a square, height-limited board can actually use —
+   otherwise a wide monitor just stretches empty margins around a board that
+   cannot grow any further.
+
+   The hand column is a fixed, comfortable width rather than a fraction, so it
+   grows with the screen up to a point and then stops: on a very tall monitor
+   a fractional column would balloon into a mostly empty strip. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 80rem) {
+    .seq {
+        --seq-hand-col: 26rem;
+
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, var(--seq-hand-col));
+        max-width: calc(
+            (100dvh - 6rem) + var(--seq-hand-col) + var(--seq-gap)
         );
     }
 }
@@ -131,22 +131,22 @@
     color: #ffffff;
 }
 
-/* Turn info lives in the secondary (hand) column, above the cards.
+/* Turn info lives in the hand area, above the cards.
 
    The box is a fixed slot, not a content-sized one: the prompt text changes
    length every turn (and wraps differently as the column narrows), and the
    end-of-game message is a single short line. Sizing to content made the box
    grow and shrink as cards were selected, so span the hand column (the flex
    column would otherwise shrink-wrap it) and reserve the tallest state —
-   avatar row plus a two-line hint — centring whatever is inside. */
+   avatar row plus a one-line hint — centring whatever is inside. */
 .seq-status {
     display: grid;
     align-content: center;
     width: 100%;
-    min-height: 5.6rem;
+    min-height: 4rem;
     font-weight: 600;
     text-align: center;
-    padding: 0.5em 0.9em;
+    padding: 0.4em 0.8em;
     background: var(--color-base-100);
     border: 3px solid var(--color-ink);
     border-radius: 0.6rem;
@@ -192,21 +192,28 @@
 
 /* --- Board --------------------------------------------------------------------- */
 
-/* Fluid 10x10 board: fills the main column (up to a cap) and stays square
-   via aspect-ratio, so cells scale with the viewport instead of being
-   capped at a fixed pixel size. Width is also capped by the viewport
-   HEIGHT (square board = width is its height) so short windows don't
-   scroll: the cap reserves room for the header + hand stack. On mobile
-   those stack taller (wrapped header, cards + button plus row gaps),
-   so a larger share of the viewport height is reserved. */
-.seq-board {
+/* The board area is a size container so the square board can be sized from
+   BOTH axes: min(area width, area height). That keeps it square and fully
+   visible without viewport-height magic numbers, and it adapts to whichever
+   axis is the constraint (portrait: width, landscape: height). */
+.seq-board-area {
     grid-area: board;
+    container-type: size;
     display: grid;
-    grid-template-columns: repeat(10, minmax(24px, 1fr));
+    place-items: center;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Fluid 10x10 board: fills the smaller of the area's two dimensions and
+   stays square via aspect-ratio, so cells scale with the available space
+   instead of being capped at a fixed pixel size. */
+.seq-board {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
     grid-auto-rows: 1fr;
+    width: min(100%, 100cqh);
     aspect-ratio: 1;
-    width: min(100%, var(--seq-board-cap));
-    justify-self: center;
     gap: 2px;
     padding: 6px;
     background: var(--color-base-100);
@@ -341,39 +348,52 @@
 
 /* --- Hand ---------------------------------------------------------------------- */
 
+/* Portrait: the hand is the bottom row of the shell, so its content is
+   bottom-aligned and the cards share one row across the full width.
+   Landscape: it becomes a full-height side column, so the content is centred
+   and the cards wrap into two rows. */
 .seq-hand-area {
     grid-area: hand;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
-    /* Size container for the hand cards: they size in cqw so they track the
-       hand's own column (the board column on mobile, the side column on wide
-       screens) instead of the viewport. */
-    container-type: inline-size;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+    min-height: 0;
+}
+
+@media (min-aspect-ratio: 1 / 1) {
+    .seq-hand-area {
+        justify-content: center;
+    }
 }
 
 .seq-hand {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.4rem;
+    width: 100%;
 }
 
-/* On wide screens the hand occupies the narrow right-hand column. The card
-   width (22cqw) is tuned so a full 7-card hand wraps into exactly two rows
-   (4 + 3) instead of growing a third. */
-@media (min-width: 64rem) {
+/* Landscape: the hand occupies the narrow side column, so the cards wrap into
+   two rows (4 + 3) instead of shrinking to fit one. */
+@media (min-aspect-ratio: 1 / 1) {
     .seq-hand {
-        margin-top: 2rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 }
 
-/* Card width tracks the board (see --seq-hand-card-width); height derives
-   from the width via aspect-ratio. */
+/* Cards share the row equally (flex-basis 0) and derive their height from the
+   width via aspect-ratio; the max-width keeps a short hand from ballooning. */
 .seq-hand-card {
     position: relative;
-    width: var(--seq-hand-card-width);
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 4.5rem;
     aspect-ratio: 7 / 10;
     display: flex;
     flex-direction: column;
@@ -391,6 +411,21 @@
         transform 120ms ease,
         box-shadow 120ms ease,
         border-color 120ms ease;
+}
+
+@media (min-aspect-ratio: 1 / 1) {
+    .seq-hand-card {
+        flex: 0 1 calc(25% - 0.5rem);
+        max-width: 5.5rem;
+    }
+}
+
+/* The wider hand column on large screens fits bigger cards: 4 + 3 at ~6rem
+   instead of the tablet's ~5.5rem. */
+@media (min-aspect-ratio: 1 / 1) and (min-width: 80rem) {
+    .seq-hand-card {
+        max-width: 6rem;
+    }
 }
 
 .seq-hand-card.red {

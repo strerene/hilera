@@ -363,20 +363,25 @@ export default function SequenceGame(props: {
       </header>
 
       {/* --- Board --- */}
-      <div class="seq-board" role="grid" aria-label="Sequence board">
-        <For each={s().board}>
-          {(cell, i) => (
-            <CellView
-              cell={cell}
-              index={i()}
-              legal={highlightCells().has(i())}
-              sequenceFlash={sequenceFlash().has(i())}
-              lastMoveFlash={lastMoveFlash() === i()}
-              interactive={myTurn() && highlightCells().has(i())}
-              onCellClick={cellClick}
-            />
-          )}
-        </For>
+      {/* The area is a size container: the square board below is sized from
+          BOTH of its dimensions, so it always fits the space that is left
+          after the header and the hand. */}
+      <div class="seq-board-area">
+        <div class="seq-board" role="grid" aria-label="Sequence board">
+          <For each={s().board}>
+            {(cell, i) => (
+              <CellView
+                cell={cell}
+                index={i()}
+                legal={highlightCells().has(i())}
+                sequenceFlash={sequenceFlash().has(i())}
+                lastMoveFlash={lastMoveFlash() === i()}
+                interactive={myTurn() && highlightCells().has(i())}
+                onCellClick={cellClick}
+              />
+            )}
+          </For>
+        </div>
       </div>
 
       {/* --- Hand + turn info (secondary area) --- */}
