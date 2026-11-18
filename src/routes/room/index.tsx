@@ -63,7 +63,24 @@ export default function RoomRoute() {
             fallback={
               <Show
                 when={restoring()}
-                fallback={<ClientRoom roomId={roomId()} />}
+                fallback={
+                  <Show
+                    when={roomId()}
+                    fallback={
+                      <div class="alert alert-warning">
+                        <span>
+                          No room id in this link.{" "}
+                          <a class="link" href={appPath("/")}>
+                            Create a new room
+                          </a>
+                          .
+                        </span>
+                      </div>
+                    }
+                  >
+                    <ClientRoom roomId={roomId()} />
+                  </Show>
+                }
               >
                 <p class="flex items-center gap-2">
                   <span class="loading loading-spinner" /> Restoring room…

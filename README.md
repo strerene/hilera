@@ -15,8 +15,8 @@ Styling is done with **Tailwind CSS v4** (via `@tailwindcss/vite`) and
 - The Vite plugin is registered in `vite.config.ts` (`tailwindcss()`).
 
 Prefer Tailwind utilities + daisyUI classes (`btn`, `card`, `modal`, …) for new
-UI; keep the legacy per-component CSS files (`Room.css`, `SequenceGame.css`) as
-they are until a component is rewritten.
+UI; keep the existing per-component CSS files (`SequenceGame.css`, `Memphis.css`,
+`routes/index.css`) as they are until a component is rewritten.
 
 ## Card artwork
 
@@ -24,27 +24,6 @@ Card faces and board tiles are generated SVGs: edit `scripts/generate-cards.js` 
 `bun run cards:generate` (also run automatically by `dev`/`build`). The output
 lands in `src/components/ui/assets/cards/` and `.../tiles/` and is rendered by
 `src/components/ui/PlayingCard.tsx`. Don't edit the generated SVGs by hand.
-
-## Creating a project
-
-```bash
-# create a new project in the current directory
-npm init solid@latest
-
-# create a new project in my-app
-npm init solid@latest my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
 
 ## Developing
 

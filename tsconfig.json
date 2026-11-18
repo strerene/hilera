@@ -10,7 +10,10 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": ["vite/client", "node"],
+    // @types/bun and vite/client both augment ImportMeta/globals; skip the
+    // dependency .d.ts files so their conflicts don't mask project errors.
+    "skipLibCheck": true,
+    "types": ["vite/client", "node", "bun"],
     "isolatedModules": true,
     "paths": {
       "~/*": ["./src/*"]

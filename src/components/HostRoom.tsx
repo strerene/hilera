@@ -30,7 +30,6 @@ const gameKey = (roomId: string) => `game:${roomId}`;
 export default function HostRoom(props: { roomId: string; peer: Peer }) {
   const navigate = useNavigate();
   const [conns, setConns] = createSignal<DataConnection[]>([]);
-  const [copied, setCopied] = createSignal(false);
   const [copiedLink, setCopiedLink] = createSignal(false);
   const [gameState, setGameState] =
     createSignal<SequenceState>(createInitialState());
@@ -42,6 +41,10 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   const secrets = new SequenceSecrets();
 
   // Survive the host's own reload within the same tab, and wire up peers.
+  // `restored` gates the persistence effect below: the snapshot must be read
+  // before anything writes it back, or a reload would clobber the saved game
+  // with the initial lobby state.
+  let restored = false;
   onSettled(() => {
     const saved = sessionStorage.getItem(gameKey(props.roomId));
     if (saved) {
@@ -58,10 +61,23 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
         // stale/corrupt snapshot — start clean
       }
     }
+    restored = true;
 
     props.peer.on("connection", (conn: DataConnection) => {
       conn.on("open", () => {
-        setConns((prev) => [...prev, conn]);
+        // Two-player game: exactly one guest seat. Adopt the newest connection
+        // (a reconnecting client replaces its own black-holed channel) and
+        // close any older ones, so a second guest can't act as the same seat.
+        const previous = conns();
+        setConns([conn]);
+        for (const old of previous) {
+          if (old === conn) continue;
+          try {
+            old.close();
+          } catch {
+            // already closed
+          }
+        }
         // Client reloaded mid-game (or joined late): give it the current
         // game and its own hand so it doesn't sit on "waiting for host…".
         // Sent in the lobby phase too (an initial lobby state) so the
@@ -83,6 +99,11 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
 
   onCleanup(() => {
     props.peer.destroy();
+    // Drop the module singleton and this tab's room session too: otherwise a
+    // later "create room" would reuse this destroyed peer (e.g. after the
+    // browser Back button), and the dead room's snapshot would linger.
+    sessionStorage.removeItem(gameKey(props.roomId));
+    leaveRoom(props.roomId);
   });
 
   // Persist the public state plus the hidden deck/hands so a reloaded host
@@ -90,6 +111,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   createEffect(
     () => gameState(),
     (state) => {
+      if (!restored) return;
       sessionStorage.setItem(
         gameKey(props.roomId),
         JSON.stringify({ state, secrets: secrets.serialize() }),
@@ -206,11 +228,6 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
     );
   };
 
-  const copyRoomId = async () => {
-    await navigator.clipboard.writeText(props.roomId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   // Leave wipes this tab's room session (role, ids, game snapshot) before
   // navigating home; onCleanup destroys the peer as the component unmounts.
@@ -225,9 +242,14 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   // the link should be the same tidy URL every time.
   const copyRoomLink = async () => {
     const link = `${window.location.origin}${appPath("/room")}?id=${encodeURIComponent(props.roomId)}`;
-    await navigator.clipboard.writeText(link);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      // Clipboard access can be denied (insecure origin, permissions). The
+      // link is still visible in the lobby, so failing quietly is fine.
+    }
   };
 
   return (

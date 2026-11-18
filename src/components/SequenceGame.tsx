@@ -366,7 +366,7 @@ export default function SequenceGame(props: {
           BOTH of its dimensions, so it always fits the space that is left
           after the header and the hand. */}
       <div class="seq-board-area">
-        <div class="seq-board" role="grid" aria-label="Sequence board">
+        <div class="seq-board" role="group" aria-label="Sequence board">
           <For each={s().board}>
             {(cell, i) => (
               <CellView

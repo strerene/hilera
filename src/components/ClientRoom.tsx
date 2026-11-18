@@ -103,7 +103,10 @@ export default function ClientRoom(props: { roomId: string }) {
         handleDisconnect();
       });
       conn.on("data", (raw) => {
-        const msg = raw as HostMessage;
+        const msg = raw as HostMessage | null;
+        // peerjs delivers whatever the peer sent; a malformed frame must not
+        // throw inside the data handler.
+        if (!msg || typeof msg !== "object") return;
         if (msg.type === "start") {
           setGameState(createInitialState());
           setHand([]);

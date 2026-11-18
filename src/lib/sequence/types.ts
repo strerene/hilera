@@ -64,12 +64,14 @@ export interface SequenceState {
   turnOrder: string[]; // seat order; [0] is the host seat
   board: BoardCell[]; // length 100, row-major
   // Public hand sizes. Hand CONTENTS are hidden information: they live
-  // host-side (SequenceSecrets) and each peer receives only its own hand via a
-  // "hand" message. Never put hands in the public state — it would leak
-  // through broadcasts.
+  // host-side (SequenceSecrets) and each peer receives only its own hand in
+  // the `hand` field of the host's `state` message. Never put hands in the
+  // public state — it would leak through broadcasts.
   handCounts: Record<string, number>;
   deckCount: number; // public; the deck order itself lives host-side only
-  discards: Record<string, Card[]>; // public, like the physical discard piles
+  // Public discard piles: every played card and every dead-card exchange lands
+  // here, and the deck is rebuilt from them when it runs out.
+  discards: Record<string, Card[]>;
   sequences: SequenceLine[]; // claimed sequences (their chips are locked)
   currentPlayerId: string;
   turnNumber: number;
@@ -91,7 +93,7 @@ export const BOARD_SIZE = 10;
 // START_GAME / SHUFFLE_AND_DEAL actions. All randomness (shuffle/deal results)
 // is generated host-side and kept in host-managed secrets — it NEVER appears
 // in a broadcast payload. Actions carry only public facts; hidden info (own
-// hand) travels in "hand" messages.
+// hand) travels in the `hand` field of the host's `state` message.
 
 export type SequenceActionType = "MOVE" | "DECLARE_DEAD_CARD";
 

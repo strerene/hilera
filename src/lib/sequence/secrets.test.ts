@@ -101,6 +101,7 @@ describe("MOVE proposals", () => {
     });
     expect(next.handCounts.green).toBe(7); // -1 spent +1 drawn
     expect(next.deckCount).toBe(0);
+    expect(next.discards.green).toEqual([NINE_H]); // played card recycled
     expect(next.currentPlayerId).toBe("blue");
   });
 
@@ -130,6 +131,7 @@ describe("MOVE proposals", () => {
     expect(next.status).toEqual({ winner: "green" });
     expect(next.handCounts.green).toBe(6);
     expect(next.deckCount).toBe(1); // untouched
+    expect(next.discards.green).toEqual([JACK_D]); // played card recycled
   });
 
   test("rejected: card not held, wrong hand index, wrong turn, or dead card", () => {
@@ -227,7 +229,7 @@ describe("atomicity: the dry run rejects before any secret is touched", () => {
 });
 
 describe("deck exhaustion on the folded draw", () => {
-  test("deck and discards empty: accepted with no secret draw (loss of card)", () => {
+  test("deck and discards empty: the played card is recycled and drawn back", () => {
     const secrets = freshSecrets({ deck: [] });
     const s = playing({
       currentPlayerId: "green",
@@ -240,7 +242,9 @@ describe("deck exhaustion on the folded draw", () => {
       cell: cardCellIndices(NINE_H)[0],
     });
     expect(prepared).not.toBeNull();
-    expect(secrets.handOf("green")).toEqual(GREEN_HAND.slice(1)); // spent only
+    // The played card is discarded, reshuffled and drawn back: the hand is
+    // whole again (the spent card is appended at the end).
+    expect(secrets.handOf("green")).toEqual([...GREEN_HAND.slice(1), NINE_H]);
 
     const next = reducer(s, {
       type: "MOVE",
@@ -249,7 +253,8 @@ describe("deck exhaustion on the folded draw", () => {
     });
     expect(next).not.toBe(s);
     expect(next.currentPlayerId).toBe("blue");
-    expect(next.handCounts.green).toBe(6);
+    expect(next.handCounts.green).toBe(7);
+    expect(next.deckCount).toBe(0);
   });
 
   test("deck exhausted with discards: reshuffles the discards, then draws", () => {
@@ -268,20 +273,24 @@ describe("deck exhaustion on the folded draw", () => {
     const hand = secrets.handOf("green");
     expect(hand).toHaveLength(7);
     expect(hand).toContainEqual(ACE_S); // original hand preserved
-    // The drawn card is one of the reshuffled discards (neither collides with
-    // the dealt hand, unlike the double deck's duplicate ranks).
-    expect(
-      hand.filter((c) => (c.rank === "7" || c.rank === "8") && c.suit === "D"),
-    ).toHaveLength(1);
+    // The reshuffle pool is the two discards plus the played card; the drawn
+    // card (appended last) is one of them.
+    expect([
+      { rank: "7", suit: "D" },
+      { rank: "8", suit: "D" },
+      NINE_H,
+    ]).toContainEqual(hand[hand.length - 1]);
 
     const next = reducer(s, {
       type: "MOVE",
       playerId: "green",
       payload: prepared!.payload,
     });
-    expect(next.deckCount).toBe(1);
+    // 2 discards + the played card, minus the one drawn.
+    expect(next.deckCount).toBe(2);
     expect(next.handCounts.green).toBe(7);
     expect(next.discards.blue).toEqual([]);
+    expect(next.discards.green).toEqual([]);
   });
 });
 
@@ -316,6 +325,48 @@ describe("DECLARE_DEAD_CARD proposals", () => {
     expect(next.handCounts.green).toBe(7); // net zero with the replacement
     expect(next.deckCount).toBe(0);
     expect(next.deadCardExchanged).toBe(true);
+  });
+
+  test("deck empty: reshuffles the discards (plus the dead card) and draws", () => {
+    const secrets = freshSecrets({ deck: [] });
+    const s = playing({
+      currentPlayerId: "green",
+      deckCount: 0,
+      discards: { blue: [{ rank: "7", suit: "D" }], green: [] },
+      board: boardWithDeadNineH(),
+    });
+    const prepared = secrets.prepareProposal(s, "green", "DECLARE_DEAD_CARD", {
+      card: NINE_H,
+      handIndex: 0,
+    });
+    expect(prepared).not.toBeNull();
+    expect(prepared!.payload).toEqual({
+      card: NINE_H,
+      handIndex: 0,
+      replacementDrawn: true,
+    });
+    // The pool is the blue discard plus the discarded dead card; the drawn
+    // card (appended last) is one of them.
+    const hand = secrets.handOf("green");
+    expect(hand).toHaveLength(7);
+    expect([
+      { rank: "7", suit: "D" },
+      NINE_H,
+    ]).toContainEqual(hand[hand.length - 1]);
+
+    const next = reducer(s, {
+      type: "DECLARE_DEAD_CARD",
+      playerId: "green",
+      payload: prepared!.payload,
+    });
+    expect(next).not.toBe(s);
+    // 1 discard + the dead card, minus the one drawn.
+    expect(next.deckCount).toBe(1);
+    expect(next.handCounts.green).toBe(7); // net zero with the replacement
+    expect(next.discards.blue).toEqual([]);
+    expect(next.discards.green).toEqual([]);
+    expect(next.deadCardExchanged).toBe(true);
+    expect(next.currentPlayerId).toBe("green");
   });
 
   test("rejected when the card is not actually dead or already exchanged", () => {

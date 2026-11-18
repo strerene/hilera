@@ -10,9 +10,14 @@ export default function RoomInfo(props: { roomId: string }) {
   const [copied, setCopied] = createSignal(false);
 
   const copy = async () => {
-    await navigator.clipboard.writeText(props.roomId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(props.roomId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be denied (insecure origin, permissions); the id
+      // is still selectable in the dialog, so failing quietly is fine.
+    }
   };
 
   return (

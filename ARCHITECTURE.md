@@ -91,19 +91,22 @@ engine into two halves:
 
 ### Turn machine
 
-A turn is a strict four-step machine enforced by the reducer:
+A turn is ONE atomic `MOVE` enforced by the reducer: the played card, the chip
+(placement or one-eyed-jack removal) and the mandatory follow-up draw commit in
+a single state transition. Intermediate turn states never exist in the public
+state.
 
 ```
-play ──► place ──► draw ──► next player
-  │                 ▲
-  │  (one-eyed jack)│
-  └──► remove ──────┘
+MOVE (card + chip + draw) ──► next player
+  │
+  └─ one-eyed jack: remove an opponent chip instead of placing
 ```
 
-Only five actions exist: `PLAY_CARD`, `DECLARE_DEAD_CARD`, `PLACE_CHIP`,
-`REMOVE_CHIP`, `DRAW_CARD`. Game setup (seats, deal) is host-only code — there
-are no START/SHUFFLE actions. `DRAW_CARD` only changes public counts; the
-drawn card itself reaches the player via a `hand` message.
+Only two actions exist: `MOVE` and `DECLARE_DEAD_CARD`. `DECLARE_DEAD_CARD`
+swaps a dead card for a replacement and does **not** end the turn (one exchange
+per turn). Game setup (seats, deal) is host-only code — there are no
+START/SHUFFLE actions. The drawn card itself reaches the player in the `hand`
+field of the host's `state` message; the public state only carries counts.
 
 Other rules encoded in the reducer:
 
@@ -113,8 +116,9 @@ Other rules encoded in the reducer:
 - Sequence claiming allows a new sequence to share **at most one chip** with
   already-claimed sequences (so a 9-in-a-row is two sequences). Claimed chips
   are `locked` and cannot be removed.
-- Deck exhaustion: rebuilt from the *public* discard piles (deterministic for
-  all replicas; only the shuffled order is host-side).
+- Every played card and every dead-card exchange joins the *public* discard
+  piles. Deck exhaustion: rebuilt from those piles (deterministic for all
+  replicas; only the shuffled order is host-side).
 
 ## Card artwork
 
@@ -140,8 +144,8 @@ faces. Change the artwork by editing the generator, never the generated files.
   - client → host: `action { type, payload }` (loosely typed on the wire;
     the host validates everything)
 
-The host folds pending mandatory draws into one state update before
-publishing (`settleDraws`), so a turn arrives as a single paint.
+The mandatory draw is folded into the same `MOVE` transition, so a turn
+arrives as a single paint.
 
 ## Rendering / persistence
 

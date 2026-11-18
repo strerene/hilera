@@ -17,14 +17,53 @@ const options = {
 async function initPeer(peerId?: string): Promise<Peer> {
   const peer = peerId ? new Peer(peerId, options) : new Peer(options);
 
-  await new Promise<void>((resolve, reject) => {
-    peer.on("open", () => resolve());
-    peer.on("error", reject);
-  });
-
-  console.log("My peer ID is: " + peer.id);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      peer.on("open", () => resolve());
+      peer.on("error", reject);
+    });
+  } catch (err) {
+    // A peer that never opened (e.g. `unavailable-id`) still holds a signaling
+    // socket; drop it so a retry starts clean.
+    try {
+      peer.destroy();
+    } catch {
+      // already dead
+    }
+    throw err;
+  }
 
   return peer;
+}
+
+const RESTORE_ATTEMPTS = 4;
+const RESTORE_DELAY_MS = 500;
+
+/** True for the "id still reserved by the signaling server" error. */
+function isUnavailableId(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { type?: string }).type === "unavailable-id"
+  );
+}
+
+/**
+ * Reclaim a stored host id, retrying while the signaling server still holds it
+ * from before a reload. Any other error (or exhausted retries) propagates.
+ */
+async function initPeerWithRetry(peerId: string): Promise<Peer> {
+  for (let attempt = 0; attempt < RESTORE_ATTEMPTS; attempt++) {
+    try {
+      return await initPeer(peerId);
+    } catch (err) {
+      if (!isUnavailableId(err) || attempt === RESTORE_ATTEMPTS - 1) throw err;
+      await new Promise((resolve) =>
+        setTimeout(resolve, RESTORE_DELAY_MS * (attempt + 1)),
+      );
+    }
+  }
+  throw new Error("unreachable");
 }
 
 export interface RoomHandle {
@@ -37,7 +76,10 @@ export interface RoomHandle {
 let room: RoomHandle | null = null;
 
 export async function createRoom(roomId?: string): Promise<RoomHandle> {
-  if (room) return room;
+  // A destroyed peer (e.g. the host navigated away without "Leave") must not
+  // be handed back: it can never accept connections again.
+  if (room && !room.peer.destroyed) return room;
+  room = null;
 
   // On a reload of the same tab, reclaim the previous host id so clients
   // can reconnect to the room id in the URL. A brand-new room gets a
@@ -48,7 +90,9 @@ export async function createRoom(roomId?: string): Promise<RoomHandle> {
       ? sessionStorage.getItem(hostIdKey(roomId))
       : undefined) ?? undefined;
 
-  const peer = await initPeer(storedId);
+  const peer = storedId
+    ? await initPeerWithRetry(storedId)
+    : await initPeer();
   room = { peer, roomId: peer.id };
   sessionStorage.setItem(SESSION_ROLE_KEY, "host");
   sessionStorage.setItem(SESSION_ROOM_KEY, room.roomId);
@@ -86,10 +130,21 @@ export async function joinRoom(
   hostId: string,
 ): Promise<{ peer: Peer; connection: DataConnection }> {
   const peer = await initPeer();
-  const connection = await connectToHost(peer, hostId);
-  sessionStorage.setItem(SESSION_ROLE_KEY, "client");
-  sessionStorage.setItem(SESSION_ROOM_KEY, hostId);
-  return { peer, connection };
+  try {
+    const connection = await connectToHost(peer, hostId);
+    sessionStorage.setItem(SESSION_ROLE_KEY, "client");
+    sessionStorage.setItem(SESSION_ROOM_KEY, hostId);
+    return { peer, connection };
+  } catch (err) {
+    // The caller never sees this peer, so it would otherwise leak its
+    // signaling socket on every failed retry.
+    try {
+      peer.destroy();
+    } catch {
+      // already dead
+    }
+    throw err;
+  }
 }
 
 async function connectToHost(

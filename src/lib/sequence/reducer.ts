@@ -77,11 +77,16 @@ function move(state: SequenceState, action: GameAction): SequenceState {
     return state;
   }
 
-  // The spent card leaves the hand; the follow-up draw is added below — or
-  // not, when the move ends the game or no card exists anywhere to draw.
+  // The spent card leaves the hand and joins the player's public discard pile
+  // (like the physical game), so the reshuffle pool never loses cards. The
+  // follow-up draw is added below — or not, when the move ends the game.
   const spent = {
     ...state,
     handCounts: bumpHandCount(state, action.playerId, -1),
+    discards: {
+      ...state.discards,
+      [action.playerId]: [...(state.discards[action.playerId] ?? []), card],
+    },
   };
 
   if (isOneEyedJack(card)) {
@@ -136,15 +141,18 @@ function declareDeadCard(
     return state; // not actually dead
   }
   const discards = { ...state.discards };
-  discards[action.playerId] = [...discards[action.playerId], card];
-  return {
+  discards[action.playerId] = [...(discards[action.playerId] ?? []), card];
+  // The discarded card leaves the hand and joins the public discard pile.
+  const spent: SequenceState = {
     ...state,
     discards,
-    // discard (-1) + replacement (+1 when drawn) -> net 0 or -1
-    handCounts: bumpHandCount(state, action.playerId, replacementDrawn ? 0 : -1),
-    deckCount: replacementDrawn ? state.deckCount - 1 : state.deckCount,
+    handCounts: bumpHandCount(state, action.playerId, -1),
     deadCardExchanged: true,
   };
+  if (!replacementDrawn) return spent;
+  // The replacement comes off the deck, or from the reshuffled discard piles
+  // (which now include the card just discarded) when the deck is empty.
+  return drawOne(spent, action.playerId) ?? spent;
 }
 
 // --- Follow-up draw & turn transition ---------------------------------------------
@@ -154,35 +162,49 @@ function declareDeadCard(
  * the drawn card itself stays hidden (only public counts change here, and the
  * drawing player's hand is updated via a "hand" message).
  */
-function drawAndAdvance(state: SequenceState): SequenceState {
-  const playerId = state.currentPlayerId;
-  if (state.deckCount <= 0) {
-    // Deck exhausted: rebuild it from the PUBLIC discard piles (deterministic
-    // for every replica — only the shuffled ORDER is host-side, in secrets).
-    const discardTotal = Object.values(state.discards).reduce(
-      (n, p) => n + p.length,
-      0,
-    );
-    if (discardTotal === 0) {
-      // No card exists anywhere (deck and discards empty): the turn still
-      // advances — a "loss of card" — because freezing on the draw step
-      // would deadlock the game. No hand or deck counts change.
-      return advanceTurn(state);
-    }
-    const discards: SequenceState["discards"] = {};
-    for (const seat of state.turnOrder) discards[seat] = [];
-    return advanceTurn({
+/**
+ * Draw one card for `playerId`: off the deck, or from the reshuffled public
+ * discard piles when the deck is empty. Returns null when no card exists
+ * anywhere (deck and discards both empty), so callers can decide whether to
+ * advance without a draw.
+ */
+function drawOne(
+  state: SequenceState,
+  playerId: string,
+): SequenceState | null {
+  if (state.deckCount > 0) {
+    return {
       ...state,
       handCounts: bumpHandCount(state, playerId, 1),
-      deckCount: discardTotal - 1,
-      discards,
-    });
+      deckCount: state.deckCount - 1,
+    };
   }
-  return advanceTurn({
+  // Deck exhausted: rebuild it from the PUBLIC discard piles (deterministic
+  // for every replica — only the shuffled ORDER is host-side, in secrets).
+  const discardTotal = Object.values(state.discards).reduce(
+    (n, pile) => n + pile.length,
+    0,
+  );
+  if (discardTotal === 0) return null;
+  const discards: SequenceState["discards"] = {};
+  for (const seat of state.turnOrder) discards[seat] = [];
+  return {
     ...state,
     handCounts: bumpHandCount(state, playerId, 1),
-    deckCount: state.deckCount - 1,
-  });
+    deckCount: discardTotal - 1,
+    discards,
+  };
+}
+
+/**
+ * The mandatory end-of-turn draw, folded into the same transition as the move:
+ * the drawn card itself stays hidden (only public counts change here, and the
+ * drawing player's hand is updated via the state message's `hand` field). When
+ * no card exists anywhere (deck and discards empty), the turn still advances —
+ * a "loss of card" — because freezing on the draw step would deadlock the game.
+ */
+function drawAndAdvance(state: SequenceState): SequenceState {
+  return advanceTurn(drawOne(state, state.currentPlayerId) ?? state);
 }
 
 function advanceTurn(state: SequenceState): SequenceState {

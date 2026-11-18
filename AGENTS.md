@@ -106,7 +106,8 @@ the room link in a second tab/window).
   Reusable generic primitives go in `src/components/ui/` (presentation only —
   no game logic, no p2p imports); game-specific components stay in
   `src/components/`. Don't migrate working per-component CSS files
-  (`Room.css`, `SequenceGame.css`) unless a component is being reworked.
+  (`SequenceGame.css`, `Memphis.css`, `routes/index.css`) unless a component is
+  being reworked.
 - Comments in this codebase explain *why* around the hidden-information
   architecture — keep that style; these invariants are easy to break silently.
 - Engine code (`src/lib/sequence/`) must remain independent of Solid/DOM so it

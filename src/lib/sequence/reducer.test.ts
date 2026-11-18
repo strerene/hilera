@@ -30,6 +30,12 @@ const move = (
 ): SequenceState =>
   reducer(state, { type: "MOVE", playerId, payload: { card, handIndex: 0, cell } });
 
+/** Total cards in play: deck + hands + discard piles. Must stay constant. */
+const totalCards = (s: SequenceState): number =>
+  s.deckCount +
+  Object.values(s.handCounts).reduce((n, c) => n + c, 0) +
+  Object.values(s.discards).reduce((n, pile) => n + pile.length, 0);
+
 /** Board with blue chips on both 9H cells (index 35 and 71) → 9H is dead. */
 const boardWithDeadNineH = () =>
   createInitialState().board.map((c, i) =>
@@ -46,6 +52,9 @@ describe("atomic moves: card + chip + draw in one transition", () => {
     // spent card (-1) refilled by the draw (+1): net zero
     expect(r.handCounts.green).toBe(7);
     expect(r.deckCount).toBe(89);
+    // The played card is recycled into the discard pile, so no card is lost.
+    expect(r.discards.green).toEqual([NINE_H]);
+    expect(totalCards(r)).toBe(totalCards(s));
     expect(r.currentPlayerId).toBe("blue");
     expect(r.turnNumber).toBe(s.turnNumber + 1);
   });
@@ -225,7 +234,7 @@ describe("dead card exchange (does not end the turn)", () => {
 });
 
 describe("deck exhaustion on the folded draw", () => {
-  test("deck and discards empty: the turn advances with a loss of card", () => {
+  test("deck and discards empty: the played card is recycled and drawn back", () => {
     const s = playing({
       currentPlayerId: "green",
       deckCount: 0,
@@ -234,8 +243,12 @@ describe("deck exhaustion on the folded draw", () => {
     const r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
     expect(r).not.toBe(s);
     expect(r.currentPlayerId).toBe("blue");
-    expect(r.handCounts.green).toBe(6); // card spent, nothing to draw
+    // The played card joins the discard pile, which is reshuffled and drawn
+    // back: the hand is refilled and the pile is cleared.
+    expect(r.handCounts.green).toBe(7);
     expect(r.deckCount).toBe(0);
+    expect(r.discards.green).toEqual([]);
+    expect(totalCards(r)).toBe(totalCards(s));
   });
 
   test("deck empty with discards: rebuild the deck from the discard piles", () => {
@@ -245,10 +258,13 @@ describe("deck exhaustion on the folded draw", () => {
       discards: { blue: [{ rank: "2", suit: "C" }, { rank: "3", suit: "C" }], green: [] },
     });
     const r = move(s, NINE_H, cardCellIndices(NINE_H)[0]);
-    expect(r.deckCount).toBe(1); // 2 discards - 1 drawn
+    // 2 discards + the played card, minus the one drawn.
+    expect(r.deckCount).toBe(2);
     expect(r.handCounts.green).toBe(7); // spent + drawn
     expect(r.discards.blue).toEqual([]);
+    expect(r.discards.green).toEqual([]);
     expect(r.currentPlayerId).toBe("blue");
+    expect(totalCards(r)).toBe(totalCards(s));
   });
 });
 

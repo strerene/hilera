@@ -1,8 +1,9 @@
 // --- Host-side secrets (deck order + hands) ------------------------------------
 // IMPURE BY DESIGN: this module holds the hidden game information. It runs
 // ONLY on the host, is never part of the public state, and never appears in a
-// broadcast payload. The reducer (pure) and the clients (via "hand" messages)
-// only ever see public facts or a player's own hand.
+// broadcast payload. The reducer (pure) and the clients (via the `hand` field
+// of the host's `state` message) only ever see public facts or a player's own
+// hand.
 import type { Card, SequenceState } from "./types";
 import { HAND_SIZE } from "./types";
 import { createDeck, isDeadCard, shuffle } from "./cards";
@@ -77,9 +78,24 @@ export class SequenceSecrets {
     }
   }
 
-  /** Dead-card exchange: discard + replacement off the deck (may be null). */
-  exchangeDeadCard(playerId: string, deadCard: Card, handIndex?: number): void {
+  /**
+   * Dead-card exchange: discard + replacement off the deck, or from the
+   * reshuffled discard piles when the deck is empty. The discarded card is
+   * part of that pool, so a replacement is always available.
+   */
+  exchangeDeadCard(
+    playerId: string,
+    deadCard: Card,
+    handIndex: number | undefined,
+    discards: Record<string, Card[]>,
+  ): void {
     this.removeCard(playerId, deadCard, handIndex);
+    if (this.deck.length === 0) {
+      this.reshuffle({
+        ...discards,
+        [playerId]: [...(discards[playerId] ?? []), deadCard],
+      });
+    }
     this.drawInto(playerId);
   }
 
@@ -89,11 +105,6 @@ export class SequenceSecrets {
     for (const pile of Object.values(discards)) all.push(...pile);
     this.deck = shuffle(all);
     return this.deck.length;
-  }
-
-  /** True when a dead-card replacement is possible right now. */
-  canReplaceCard(): boolean {
-    return this.deck.length > 0;
   }
 
   /**
@@ -160,14 +171,18 @@ export class SequenceSecrets {
     this.removeCard(playerId, card, handIndex);
     // The hand count is the only public trace of the draw: net 0 means the
     // spent card was refilled (-1 played +1 drawn), net -1 means no card was
-    // drawn (win / full board / loss of card).
+    // drawn (win / full board).
     const drawn =
       (probe.handCounts[playerId] ?? -1) === state.handCounts[playerId];
     if (drawn) {
       if (state.deckCount <= 0) {
         // The dry run rebuilt the deck from the public discard piles; mirror
-        // it so the drawn card comes from the same pool.
-        this.reshuffle(state.discards);
+        // it so the drawn card comes from the same pool. The played card is
+        // discarded before the draw, so it is part of that pool too.
+        this.reshuffle({
+          ...state.discards,
+          [playerId]: [...(state.discards[playerId] ?? []), card],
+        });
       }
       this.drawInto(playerId);
     }
@@ -183,23 +198,32 @@ export class SequenceSecrets {
       card?: Card;
       handIndex?: number;
     };
+    // Hidden-info preconditions first (the reducer cannot check these):
+    // acting player mirrors the reducer's isActingPlayer, and the card must
+    // genuinely sit in the player's hand at the claimed index.
     const acting =
       state.phase === "playing" &&
       !state.status &&
       playerId === state.currentPlayerId;
     if (!acting) return null;
-    if (state.deadCardExchanged) return null;
     if (!card) return null;
     if (!this.holdsCard(playerId, card, handIndex)) return null;
-    const color = state.players[playerId]?.color;
-    if (!color || !isDeadCard(state.board, card, color)) return null;
-    const replacementDrawn = this.canReplaceCard();
-    if (replacementDrawn) {
-      this.exchangeDeadCard(playerId, card, handIndex);
-    } else {
-      this.removeCard(playerId, card, handIndex);
-    }
-    return { payload: { card, handIndex, replacementDrawn } };
+
+    // Dry-run the exchange with the pure reducer, exactly like prepareMove: an
+    // accepted proposal is guaranteed to commit, and any drift in the
+    // reducer's public preconditions (dead card, one exchange per turn) is
+    // caught here instead of being mirrored by hand. A replacement is always
+    // available (the dead card itself is discarded before the draw), so the
+    // payload always reports replacementDrawn: true.
+    const probe = reducer(state, {
+      type: "DECLARE_DEAD_CARD",
+      playerId,
+      payload: { card, replacementDrawn: true },
+    });
+    if (probe === state) return null;
+
+    this.exchangeDeadCard(playerId, card, handIndex, state.discards);
+    return { payload: { card, handIndex, replacementDrawn: true } };
   }
 
   /** Snapshot of the hidden information (for host-side persistence). */
