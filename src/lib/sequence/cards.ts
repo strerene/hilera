@@ -63,8 +63,8 @@ export function isTwoEyedJack(card: Card): boolean {
 }
 
 // --- Board layout ---------------------------------------------------------------
-// Canonical 10x10 Sequence board (Jax layout). Each non-jack card appears
-// exactly twice; the four corners are FREE spaces. Row-major order.
+// A 10x10 board where each non-jack card appears exactly twice and the four
+// corners are FREE spaces. Row-major order.
 const LAYOUT_TOKENS: string[] = [
   "FREE", "6D", "7D", "8D", "9D", "10D", "QD", "KD", "AD", "FREE",
   "5D", "3H", "2H", "2S", "3S", "4S", "5S", "6S", "7S", "AC",

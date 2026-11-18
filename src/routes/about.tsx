@@ -32,7 +32,7 @@ export default function About() {
       <Title>About — Hilera</Title>
       <MemphisBackdrop />
       <div class="page-inner">
-        {/* Base-aware: a bare `href="/"` is outside `/sequence` on GitHub Pages. */}
+        {/* Base-aware: a bare `href="/"` is outside `/hilera` on GitHub Pages. */}
         <a class="page-back" href={appPath("/")}>
           ← Back to the game
         </a>
@@ -88,6 +88,17 @@ export default function About() {
         <a class="btn btn-primary mt-8" href={appPath("/")}>
           Create a room
         </a>
+
+        <p class="mt-6 text-sm font-medium">
+          <a class="page-link" href={appPath("/privacy")}>
+            Privacy and data →
+          </a>
+        </p>
+
+        <p class="mt-6 max-w-2xl text-sm font-medium text-base-content/70">
+          An original implementation of a traditional five-in-a-row card game.
+          Not affiliated with or endorsed by any commercial publisher.
+        </p>
       </div>
     </main>
   );

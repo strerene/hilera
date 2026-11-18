@@ -51,18 +51,9 @@ export default function Document(props: ParentProps) {
           href={`${import.meta.env.BASE_URL}favicon.ico`}
           sizes="16x16 32x32 48x48 64x64"
         />
-        {/* Display + body faces for the neobrutalist skin. Fallbacks in
-            app.css keep the app readable if the CDN is unreachable. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossorigin=""
-        />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap"
-        />
+        {/* Display + body faces are self-hosted via @font-face in app.css, so
+            the page makes no third-party font request (no visitor IP leaves
+            for Google). Fallbacks in app.css cover a failed font load. */}
         <HydrationScript />
       </head>
       <body>

@@ -288,7 +288,10 @@ export default function Home() {
           <p class="text-sm">
             Built with WebRTC. No game server, no login, no tracking.
           </p>
-          <a href={appPath("/about")}>About the game →</a>
+          <div class="flex flex-wrap items-center gap-4">
+            <a href={appPath("/about")}>About the game →</a>
+            <a href={appPath("/privacy")}>Privacy</a>
+          </div>
         </div>
       </footer>
 

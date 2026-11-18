@@ -22,7 +22,7 @@ bun run preview      # vite preview
 
 bun run test         # engine tests (bun test, src/lib/sequence/*.test.ts)
 bun run cards:generate    # regenerate card/tile SVGs (dev/build do this automatically)
-bun run gh-pages:deploy   # build with BASE_PATH=/sequence/ and publish to GitHub Pages
+bun run gh-pages:deploy   # build with BASE_PATH=/hilera/ and publish to GitHub Pages
 ```
 
 There is no linter configured. Verify changes with `bun run test` (covers the
@@ -117,7 +117,7 @@ the room link in a second tab/window).
   API. `routes/room` defers its session read into `onSettled` and renders an
   unresolved branch that is identical on both sides — keep that branch free of
   `?id` so one prerendered `/room` file hydrates for every room.
-- **Base-aware paths.** GitHub Pages serves this app under `/sequence/`, and
+- **Base-aware paths.** GitHub Pages serves this app under `/hilera/`, and
   Solid Router never adds the base for a leading `/` — not for `href`s (it only
   claims an anchor that resolves inside the base) and not for `navigate()`: a
   bare `navigate("/")` leaves the deployment base. Every in-app path, link and

@@ -5,7 +5,7 @@
     "dev": "node scripts/generate-cards.js && vite dev",
     "build": "node scripts/generate-cards.js && vite build",
     "cards:generate": "node scripts/generate-cards.js",
-    "gh-pages:build": "node scripts/generate-cards.js && BASE_PATH=/sequence vite build && test -f dist/client/index.html && test -f dist/client/404.html && touch dist/client/.nojekyll",
+    "gh-pages:build": "node scripts/generate-cards.js && BASE_PATH=/hilera vite build && test -f dist/client/index.html && test -f dist/client/404.html && touch dist/client/.nojekyll",
     "gh-pages:deploy": "bun run gh-pages:build && bunx gh-pages -d dist/client --dotfiles",
     "start": "vite preview",
     "preview": "vite preview",

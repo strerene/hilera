@@ -43,8 +43,8 @@ hashed JS/CSS bundles linked from it. The browser hydrates that markup, so the
 content is in the HTML for crawlers and there is no blank first paint. There is
 no server runtime to deploy.
 
-To publish to GitHub Pages under `/sequence/`, use `bun run gh-pages:deploy`: it
-builds with `BASE_PATH=/sequence` and pushes `dist/client`.
+To publish to GitHub Pages under `/hilera/`, use `bun run gh-pages:deploy`: it
+builds with `BASE_PATH=/hilera` and pushes `dist/client`.
 
 ## Rendering model
 
@@ -54,5 +54,19 @@ routes with `fileRoutes()`. Routes ship eagerly (`codeSplitting: false`) — one
 bundle, no per-route request. The prerender seeds live in `vite.config.ts`;
 links and navigations inside the app go through `appPath()` so they stay inside
 the deployment base.
+
+## License
+
+Hilera is split-licensed:
+
+- **Code** — [FSL-1.1-MIT](./LICENSE). You may use, copy, modify, and
+  redistribute the source for any purpose except a Competing Use (a commercial
+  product or service that substitutes for Hilera). On 18 November 2028 the MIT
+  future license takes effect.
+- **Artwork** — the card and tile SVGs, the logo star, and the favicons are
+  [CC BY-NC-ND 4.0](./LICENSE-ASSETS): noncommercial sharing only, no
+  derivatives. The FSL future license does not apply to the artwork.
+- **Third-party software** — see [THIRD-PARTY.md](./THIRD-PARTY.md).
+- **Fonts** — SIL Open Font License 1.1 (see `public/fonts/OFL-*.txt`).
 
 ## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)

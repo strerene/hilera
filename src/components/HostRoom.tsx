@@ -238,7 +238,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   };
 
   // Build the invite link from the deployment base rather than the current
-  // pathname: the host may be sitting on `/sequence/room/` after a redirect, and
+  // pathname: the host may be sitting on `/hilera/room/` after a redirect, and
   // the link should be the same tidy URL every time.
   const copyRoomLink = async () => {
     const link = `${window.location.origin}${appPath("/room")}?id=${encodeURIComponent(props.roomId)}`;

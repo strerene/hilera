@@ -12,7 +12,7 @@ import tailwindcss from "@tailwindcss/vite";
 const basePath = `${process.env.BASE_PATH ?? "/"}`.replace(/\/?$/, "/");
 
 // Prerender seeds are requested against the router, which matches only inside the
-// deployment base (`/sequence` on GitHub Pages), while the output filenames stay
+// deployment base (`/hilera` on GitHub Pages), while the output filenames stay
 // base-free because the host supplies the prefix. Hence both halves are explicit.
 const prerenderBase = basePath.replace(/\/$/, "");
 const page = (route: string, filename: string) => ({
@@ -53,6 +53,7 @@ export default defineConfig({
       pages: [
         page("/", "index.html"),
         page("/about", "about/index.html"),
+        page("/privacy", "privacy/index.html"),
         page("/room", "room/index.html"),
         page("/404", "404.html"),
       ],

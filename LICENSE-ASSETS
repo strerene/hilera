@@ -1,0 +1,29 @@
+Hilera artwork
+Copyright (c) 2026 Rene
+
+The artwork in this repository — the card and tile SVGs under
+`src/components/ui/assets/`, the logo star, and the favicons — is licensed
+under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0
+International License (CC BY-NC-ND 4.0).
+
+You may share the artwork for noncommercial purposes, provided you:
+
+- give appropriate credit to the author,
+- link to the license, and
+- do not modify the artwork or create derivative works from it.
+
+Commercial use is not permitted.
+
+Full license text:
+<https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode>
+
+Required Notice: Copyright (c) 2026 Rene
+
+This notice covers the artwork only. The source code is licensed under the
+Functional Source License 1.1 (FSL-1.1-MIT; see LICENSE), and third-party
+software and fonts remain under their own licenses (see THIRD-PARTY.md).
+
+Note on the generator: the card and tile files are produced by
+`scripts/generate-cards.js`. The script is part of the licensed software, so
+running it to rebuild this site for a noncommercial purpose is permitted. The
+files it writes are artwork and remain subject to this notice.
