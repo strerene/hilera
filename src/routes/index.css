@@ -188,13 +188,10 @@
   justify-content: center;
 }
 
+/* The generated face brings its own border and hard shadow; the wrapper only
+   sets the size in the fanned hero art. */
 .landing-art-card {
   width: 8.5rem;
-  padding: 0.3rem;
-  background: var(--color-base-100);
-  border: 3px solid var(--color-ink);
-  border-radius: 0.75rem;
-  box-shadow: 6px 6px 0 var(--color-ink);
 }
 
 .landing-art-card + .landing-art-card {

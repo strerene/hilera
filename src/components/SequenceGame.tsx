@@ -8,11 +8,9 @@ import {
   isTwoEyedJack,
 } from "~/lib/sequence";
 import TeamAvatar from "~/components/ui/TeamAvatar";
-import PlayingCard from "~/components/ui/PlayingCard";
+import PlayingCard, { FreeSpace } from "~/components/ui/PlayingCard";
 import RoomInfo from "~/components/ui/RoomInfo";
 import "./SequenceGame.css";
-
-const SUIT_RED: Record<Card["suit"], boolean> = { S: false, H: true, D: true, C: false };
 
 function cardTitle(card: Card): string {
   if (isTwoEyedJack(card)) return "Two-eyed jack — place a chip on ANY open space";
@@ -40,8 +38,9 @@ function CellView(props: {
   };
   return (
     <div
-      class={`seq-cell ${props.cell.card === "FREE" ? "free" : SUIT_RED[props.cell.card.suit] ? "red" : "black"}`}
+      class="seq-cell"
       classList={{
+        free: props.cell.card === "FREE",
         legal: props.legal,
         "sequence-flash": props.sequenceFlash,
         "last-move": props.lastMoveFlash,
@@ -62,7 +61,7 @@ function CellView(props: {
       <Show
         when={props.cell.card !== "FREE" ? props.cell.card : null}
         keyed
-        fallback={<span class="seq-free-glyph">✦</span>}
+        fallback={<FreeSpace />}
       >
         {(card) => <PlayingCard card={card} variant="square-small" />}
       </Show>
@@ -87,7 +86,7 @@ function HandCardView(props: {
   return (
     <button
       type="button"
-      class={`seq-hand-card ${SUIT_RED[props.card.suit] ? "red" : "black"}`}
+      class="seq-hand-card"
       classList={{ selected: props.selected, dead: props.dead, playable: props.clickable }}
       disabled={!props.clickable}
       title={

@@ -19,6 +19,7 @@ bun run start        # serve the built output
 bun run preview      # vite preview
 
 bun run test         # engine tests (bun test, src/lib/sequence/*.test.ts)
+bun run cards:generate    # regenerate card/tile SVGs (dev/build do this automatically)
 bun run gh-pages:deploy   # build with BASE_PATH=/sequence/ and publish to GitHub Pages
 ```
 
@@ -66,6 +67,12 @@ the room link in a second tab/window).
   are always published at turn boundaries.
 - `src/components/ClientRoom.tsx` — sends `action` proposals, renders host state.
 - `src/components/SequenceGame.tsx` — shared board/hand UI.
+- `src/components/ui/PlayingCard.tsx` — renders the generated card/tile SVGs.
+- `src/components/ui/assets/cards/` + `assets/tiles/` — **generated** artwork;
+  edit `scripts/generate-cards.js` and run `bun run cards:generate` instead of touching
+  these files by hand. Filenames follow the engine's cards (`7-h`, `a-s`);
+  jacks are `jack-{one,two}-eyed-*`. FREE board corners are not generated —
+  `FreeSpace` uses `assets/logo-star.svg` on the brand-pink cell.
 - `src/routes/` — SolidStart file-based routes (`index`, `about`, 404).
 
 ## Conventions

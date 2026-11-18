@@ -17,6 +17,13 @@ Prefer Tailwind utilities + daisyUI classes (`btn`, `card`, `modal`, …) for ne
 UI; keep the legacy per-component CSS files (`Room.css`, `SequenceGame.css`) as
 they are until a component is rewritten.
 
+## Card artwork
+
+Card faces and board tiles are generated SVGs: edit `scripts/generate-cards.js` and run
+`bun run cards:generate` (also run automatically by `dev`/`build`). The output
+lands in `src/components/ui/assets/cards/` and `.../tiles/` and is rendered by
+`src/components/ui/PlayingCard.tsx`. Don't edit the generated SVGs by hand.
+
 ## Creating a project
 
 ```bash

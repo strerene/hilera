@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <g style="" transform="matrix(0.885534, 0, 0, 0.885534, -0.506884, -0.409132)">
-    <path style="fill: none; stroke: currentColor; stroke-width: 8px; stroke-linecap: round; stroke-linejoin: round; transform-origin: 68.471px 69.325px 0px;" d="M 18.166 7.641 L 123.405 7.641 L 106.314 28.744 L 35.672 28.744 L 18.166 7.641 Z"/>
-    <path style="fill: none; stroke: currentColor; stroke-width: 8px; transform-origin: 68.471px 69.325px 0px;" d="M 106.656 29.014 L 131.29 77.678 L 117.041 82.026 L 117.162 99.604 C 116.819 115.87 91.799 128.124 84.075 126.825"/>
-    <ellipse style="stroke: currentColor; fill: currentColor; paint-order: fill; stroke-width: 0px; transform-origin: 68.471px 69.325px 0px;" cx="93.61" cy="57.182" rx="9.6" ry="9.94"/>
-    <path style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8px; transform-origin: 68.471px 69.325px 0px;" d="M 84.08 29.033 C 84.08 29.033 60.365 35.632 60.71 56.825 C 61.309 93.463 58.832 108.405 58.832 108.405 C 58.354 128.594 47.751 131.009 22.406 131.009 C -2.939 131.009 3.819 111.816 20.603 111.816 C 37.387 111.816 35.67 113.309 35.67 80.021 C 35.67 46.733 35.097 31.324 35.097 31.324"/>
-  </g>
-  <path style="fill: none; stroke: currentColor; stroke-width: 8px;" d=""/>
-</svg>

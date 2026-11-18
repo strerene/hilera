@@ -209,6 +209,14 @@
    stays square via aspect-ratio, so cells scale with the available space
    instead of being capped at a fixed pixel size. */
 .seq-board {
+    /* Cell dividers sit behind the chips, so keep them softer than the board's
+       outer ink frame. */
+    --seq-tile-border: color-mix(
+        in oklab,
+        var(--color-ink) 45%,
+        var(--color-paper)
+    );
+
     display: grid;
     grid-template-columns: repeat(10, minmax(0, 1fr));
     grid-auto-rows: 1fr;
@@ -229,31 +237,41 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(0.5rem, 1.6vw, 1rem);
-    border: 2px solid var(--color-ink);
+    /* The generated tile art carries its own paper fill; the cell draws the
+       ink frame in CSS and clips the art. */
+    border: 2px solid var(--seq-tile-border);
     border-radius: 4px;
-    background: #fffdf5;
+    overflow: hidden;
+    background: transparent;
 }
 
-.seq-cell.red {
-    color: #e03131;
+/* Card tiles get extra breathing room inside the cell border; FREE corners
+   already inset their own logo via .seq-free-tile. */
+.seq-cell:not(.free) {
+    padding: 6%;
 }
 
-.seq-cell.black {
-    color: var(--color-ink);
+/* FREE corners are the brand-pink logo tile with only the star mark inside. */
+.seq-free-tile {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 10%;
+    box-sizing: border-box;
+    background: var(--color-brutal-pink);
 }
 
-.seq-cell.free {
-    background: var(--color-brutal-yellow);
-}
-
-.seq-free-glyph {
-    opacity: 0.8;
+.seq-free-star {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .seq-cell.legal {
-    outline: 3px solid var(--color-primary);
-    outline-offset: -3px;
+    outline: 4px solid var(--color-primary);
+    outline-offset: -4px;
     cursor: pointer;
 }
 
@@ -263,31 +281,29 @@
 
 .seq-cell.interactive:hover {
     outline-color: var(--color-secondary);
-    background: #ffe3ec;
 }
 
-@keyframes seq-flash {
+/* The tile art is opaque, so the cell-level flash is a glow around the tile
+   image. Cells with chips also get a gold ring on the chip itself (chips paint
+   on top of the tile). Every flashed chip is freshly locked, so its inset gold
+   ring is part of the keyframes. */
+@keyframes seq-flash-tile {
     50% {
-        background: var(--color-brutal-yellow);
+        filter: drop-shadow(0 0 5px var(--color-brutal-yellow));
     }
 }
 
-/* The PlayingCard face is opaque and covers the whole cell, so animating the
-   cell background is only visible on FREE corners (which render a glyph
-   instead of a card). Cells with chips get the flash as a gold ring on the
-   chip itself — chips paint on top of the card face. Every flashed chip is
-   freshly locked, so its inset gold ring is part of the keyframes. */
 @keyframes seq-flash-chip {
     50% {
         box-shadow:
-            0 0 0 5px var(--color-brutal-yellow),
-            2px 2px 0 var(--color-ink),
+            0 0 0 4px var(--color-brutal-yellow),
+            3px 3px 0 1px var(--color-ink),
             inset 0 0 0 3px var(--color-brutal-yellow);
     }
 }
 
-.seq-cell.sequence-flash {
-    animation: seq-flash 0.7s ease-in-out 3;
+.seq-cell.sequence-flash .game-card {
+    animation: seq-flash-tile 0.7s ease-in-out 3;
 }
 
 .seq-cell.sequence-flash .seq-chip {
@@ -301,7 +317,7 @@
     50% {
         box-shadow:
             0 0 0 4px var(--color-brutal-yellow),
-            2px 2px 0 var(--color-ink);
+            3px 3px 0 1px var(--color-ink);
     }
 }
 
@@ -326,10 +342,14 @@
 
 .seq-chip {
     position: absolute;
-    inset: 15%;
+    inset: 12%;
     border-radius: 50%;
-    border: 2px solid var(--color-ink);
-    box-shadow: 2px 2px 0 var(--color-ink);
+    border: 3px solid var(--color-ink);
+    /* The paper ring separates the chip from the colorful tile art; the offset
+       ink shadow keeps the hard neobrutalist elevation. */
+    box-shadow:
+        0 0 0 2px var(--color-paper),
+        3px 3px 0 1px var(--color-ink);
 }
 
 .seq-chip.blue {
@@ -342,7 +362,8 @@
 
 .seq-chip.locked {
     box-shadow:
-        2px 2px 0 var(--color-ink),
+        0 0 0 2px var(--color-paper),
+        3px 3px 0 1px var(--color-ink),
         inset 0 0 0 3px var(--color-brutal-yellow);
 }
 
@@ -388,29 +409,23 @@
 }
 
 /* Cards share the row equally (flex-basis 0) and derive their height from the
-   width via aspect-ratio; the max-width keeps a short hand from ballooning. */
+   width via aspect-ratio; the max-width keeps a short hand from ballooning.
+   The generated face already includes its white edge, ink border and hard
+   shadow, so the button is only a hit target sized to the art. */
 .seq-hand-card {
     position: relative;
     flex: 1 1 0;
     min-width: 0;
     max-width: 4.5rem;
-    aspect-ratio: 7 / 10;
+    aspect-ratio: 304 / 424;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15rem;
-    font-family: inherit;
-    font-size: clamp(0.95rem, 2vw, 1.3rem);
-    border: 3px solid var(--color-ink);
-    border-radius: 0.5rem;
-    background: #fffdf5;
-    box-shadow: 3px 3px 0 var(--color-ink);
+    padding: 0;
+    border: none;
+    background: transparent;
     cursor: pointer;
-    transition:
-        transform 120ms ease,
-        box-shadow 120ms ease,
-        border-color 120ms ease;
+    transition: transform 120ms ease;
 }
 
 @media (min-aspect-ratio: 1 / 1) {
@@ -428,39 +443,59 @@
     }
 }
 
-.seq-hand-card.red {
-    color: #e03131;
-}
-
-.seq-hand-card.black {
-    color: var(--color-ink);
-}
-
 .seq-hand-card:disabled {
     cursor: default;
     opacity: 0.7;
-    box-shadow: 2px 2px 0 var(--color-ink);
 }
 
 .seq-hand-card.playable:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0 var(--color-ink);
+    transform: translateY(-3px);
+}
+
+/* The generated face leaves a transparent margin and its hard shadow inside
+   the SVG viewBox, so an outline on the button floats away from the card.
+   Draw the selection/focus ring on an overlay that tracks the visible card
+   edge instead (x=4..292, y=4..412 of the 304x424 artwork). */
+.seq-hand-card::after {
+    content: "";
+    position: absolute;
+    inset: 0.9434% 3.9474% 2.8302% 1.3158%;
+    z-index: 1;
+    border-radius: 1px;
+    pointer-events: none;
+}
+
+.seq-hand-card:focus-visible {
+    outline: none;
+}
+
+.seq-hand-card:focus-visible::after {
+    box-shadow:
+        0 0 0 3px var(--color-secondary),
+        0 0 0 4px var(--color-ink);
 }
 
 .seq-hand-card.selected,
 .seq-hand-card.selected:hover {
-    border-color: var(--color-primary);
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 var(--color-ink);
+    transform: translateY(-5px);
 }
 
-.seq-hand-card.dead {
+.seq-hand-card.selected::after,
+.seq-hand-card.selected:focus-visible::after {
+    box-shadow:
+        0 0 0 3px var(--color-primary),
+        0 0 0 4px var(--color-ink);
+}
+
+/* Fade only the artwork so the selection ring and the "dead" tag stay vivid. */
+.seq-hand-card.dead .game-card {
     opacity: 0.45;
     filter: grayscale(1);
 }
 
 .seq-dead-tag {
     position: absolute;
+    z-index: 2;
     top: -0.55em;
     right: -0.45em;
     padding: 0.1em 0.35em;

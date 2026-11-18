@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="6 of clubs">
+  <defs>
+    <g id="suit"><circle cx="100" cy="60.5" r="41.4"/><circle cx="56.8" cy="120.7" r="39.5"/><circle cx="143.2" cy="120.7" r="39.5"/><path d="M90.6 100 L73.7 184.6 L126.3 184.6 L109.4 100 Z"/><path d="M71.8 96.2 L128.2 96.2 L100 137.6 Z"/></g>
+    <clipPath id="sc"><circle cx="100" cy="60.5" r="41.4"/><circle cx="56.8" cy="120.7" r="39.5"/><circle cx="143.2" cy="120.7" r="39.5"/><path d="M90.6 100 L73.7 184.6 L126.3 184.6 L109.4 100 Z"/><path d="M71.8 96.2 L128.2 96.2 L100 137.6 Z"/></clipPath>
+  </defs>
+  <rect width="200" height="200" fill="#fffdf5"/>
+  <g transform="translate(22 22) scale(0.78)">
+    <use href="#suit" fill="#000" stroke="#000" stroke-width="24"/>
+    <use href="#suit" fill="#0FA573" stroke="none"/>
+    <g clip-path="url(#sc)"><use href="#suit" fill="#2EE59D" transform="translate(-12 -12)"/></g>
+  </g>
+  <g transform="translate(78.4 63.5) scale(1.35)"><g fill="none" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4" stroke="#000" stroke-width="16"><path d="M36 4 H4 V60 H36 V32 H4" transform="translate(-4 0)"/></g><g fill="none" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="4" stroke="#fff" stroke-width="8.5"><path d="M36 4 H4 V60 H36 V32 H4" transform="translate(-4 0)"/></g></g>
+</svg>

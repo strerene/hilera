@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <path style="fill: none; stroke: currentColor; stroke-width: 8px;" d=""/>
-  <path style="fill: none; stroke: currentColor; stroke-width: 8px; stroke-linecap: round; stroke-linejoin: round;" d="M 14.114 6.009 L 105.984 6.009 L 91.064 24.429 L 29.397 24.429 L 14.114 6.009 Z"/>
-  <ellipse style="stroke: currentColor; fill: currentColor; paint-order: fill; stroke-width: 0px;" cx="81.947" cy="49.008" rx="8.38" ry="8.678"/>
-  <path style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8px;" d="M 51.702 25.776 C 51.702 25.776 33.091 32.028 33.275 50.529 C 33.551 78.32 33.355 104.57 33.355 104.57 C 33.554 114.044 28.541 114.98 18.166 114.566 C 0.862 113.874 9.875 98.49 17.999 98.815 C 22.87 99.01 18.513 48.375 18.513 48.375 C 19.253 31.541 22.954 25.016 33.178 24.298"/>
-  <ellipse style="stroke: currentColor; fill: currentColor; paint-order: fill; stroke-width: 0px;" cx="53.877" cy="48.729" rx="8.38" ry="8.678"/>
-  <path style="fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8px; transform-origin: 86.619px 63.837px 0px;" d="M 82.806 103.41 C 82.806 103.41 74.18 97.321 74.068 79.371 C 73.636 78.875 74.614 41.775 74.614 41.775 C 74.224 36.304 82.49 24.671 99.279 24.264" transform="matrix(-1, 0, 0, -1, 0, 0)"/>
-  <path style="fill: none; stroke: currentColor; stroke-width: 8px; transform-origin: 70.936px 65.151px 0px;" d="M 74.188 73.59 L 66.536 56.102 L 73.116 53.014" transform="matrix(-1, 0, 0, -1, 0, 0)"/>
-</svg>

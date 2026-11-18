@@ -2,9 +2,10 @@
   "name": "hilera",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "gh-pages:build": "BASE_PATH=/sequence vite build && test -f .output/public/index.html && cp .output/public/index.html .output/public/404.html && touch .output/public/.nojekyll",
+    "dev": "node scripts/generate-cards.js && vite dev",
+    "build": "node scripts/generate-cards.js && vite build",
+    "cards:generate": "node scripts/generate-cards.js",
+    "gh-pages:build": "node scripts/generate-cards.js && BASE_PATH=/sequence vite build && test -f .output/public/index.html && cp .output/public/index.html .output/public/404.html && touch .output/public/.nojekyll",
     "gh-pages:deploy": "bun run gh-pages:build && bunx gh-pages -d .output/public --dotfiles",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
