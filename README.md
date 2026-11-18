@@ -15,7 +15,7 @@ Styling is done with **Tailwind CSS v4** (via `@tailwindcss/vite`) and
 - The Vite plugin is registered in `vite.config.ts` (`tailwindcss()`).
 
 Prefer Tailwind utilities + daisyUI classes (`btn`, `card`, `modal`, …) for new
-UI; keep the existing per-component CSS files (`SequenceGame.css`, `Memphis.css`,
+UI; keep the existing per-component CSS files (`HileraGame.css`, `Memphis.css`,
 `routes/index.css`) as they are until a component is rewritten.
 
 ## Card artwork

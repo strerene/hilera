@@ -35,8 +35,8 @@ src/
 ├── components/
 │   ├── HostRoom.tsx         # Host role: authority, secrets, broadcasting
 │   ├── ClientRoom.tsx       # Client role: sends proposals, renders state
-│   ├── SequenceGame.tsx     # Board + hands UI (shared by both roles)
-│   ├── SequenceGame.css
+│   ├── HileraGame.tsx       # Board + hands UI (shared by both roles)
+│   ├── HileraGame.css
 │   └── ui/
 │       ├── PlayingCard.tsx  # Renders generated card faces / board tiles
 │       └── assets/

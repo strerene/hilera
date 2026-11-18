@@ -77,7 +77,7 @@ the room link in a second tab/window).
   broadcast `state` + recipient's hand; `sessionStorage` persistence; states
   are always published at turn boundaries.
 - `src/components/ClientRoom.tsx` — sends `action` proposals, renders host state.
-- `src/components/SequenceGame.tsx` — shared board/hand UI.
+- `src/components/HileraGame.tsx` — shared board/hand UI.
 - `src/components/ui/PlayingCard.tsx` — renders the generated card/tile SVGs.
 - `src/components/ui/assets/cards/` + `assets/tiles/` — **generated** artwork;
   edit `scripts/generate-cards.js` and run `bun run cards:generate` instead of touching
@@ -106,7 +106,7 @@ the room link in a second tab/window).
   Reusable generic primitives go in `src/components/ui/` (presentation only —
   no game logic, no p2p imports); game-specific components stay in
   `src/components/`. Don't migrate working per-component CSS files
-  (`SequenceGame.css`, `Memphis.css`, `routes/index.css`) unless a component is
+  (`HileraGame.css`, `Memphis.css`, `routes/index.css`) unless a component is
   being reworked.
 - Comments in this codebase explain *why* around the hidden-information
   architecture — keep that style; these invariants are easy to break silently.

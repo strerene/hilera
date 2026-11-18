@@ -10,7 +10,7 @@ import {
 import TeamAvatar from "~/components/ui/TeamAvatar";
 import PlayingCard, { FreeSpace } from "~/components/ui/PlayingCard";
 import RoomInfo from "~/components/ui/RoomInfo";
-import "./SequenceGame.css";
+import "./HileraGame.css";
 
 function cardTitle(card: Card): string {
   if (isTwoEyedJack(card)) return "Two-eyed jack — place a chip on ANY open space";
@@ -122,7 +122,7 @@ export interface PlayerStatus {
   you: boolean;
 }
 
-export default function SequenceGame(props: {
+export default function HileraGame(props: {
   roomId: string;
   state: SequenceState;
   /** Local seat id: 'blue' (host) or 'green' (client). */

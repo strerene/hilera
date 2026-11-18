@@ -8,7 +8,7 @@ import {
   onSettled,
   Show,
 } from "solid-js";
-import SequenceGame from "~/components/SequenceGame";
+import HileraGame from "~/components/HileraGame";
 import GameResultDialog from "~/components/GameResultDialog";
 import TeamAvatar from "~/components/ui/TeamAvatar";
 import {
@@ -260,7 +260,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
         // itself from the space that is actually left, not from viewport
         // magic numbers.
         <div class="flex h-[calc(100dvh-2rem)] w-full flex-col gap-4">
-          <SequenceGame
+          <HileraGame
             roomId={props.roomId}
             state={gameState()}
             seat="blue"

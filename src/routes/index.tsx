@@ -277,7 +277,7 @@ export default function Home() {
         <div class="landing-footer-inner">
           <span class="font-display text-lg uppercase">Hilera</span>
           <p class="text-sm">
-            Built with SolidJS 2 + WebRTC. No game server, no tracking.
+            Built with WebRTC. No game server, no login, no tracking.
           </p>
           <a href={appPath("/about")}>About the game →</a>
         </div>

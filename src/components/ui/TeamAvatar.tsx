@@ -2,7 +2,7 @@ import { Show } from "solid-js";
 import type { ChipColor } from "~/lib/sequence";
 
 // Team colors are the chip colors, not daisyUI theme colors, so they are
-// pinned to the same values as the board chips in SequenceGame.css.
+// pinned to the same values as the board chips in HileraGame.css.
 const TEAM_BG: Record<ChipColor, string> = {
   blue: "bg-[#2f6bff]",
   green: "bg-[#22a34a]",

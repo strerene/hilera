@@ -64,7 +64,7 @@
   --color-brutal-orange: #ff8a3d;
   --color-brutal-purple: #a78bfa;
 
-  /* Team colors are also the board chip colors (see SequenceGame.css and
+  /* Team colors are also the board chip colors (see HileraGame.css and
      TeamAvatar.tsx) — keep all three in sync. */
   --color-team-blue: #2f6bff;
   --color-team-green: #22a34a;

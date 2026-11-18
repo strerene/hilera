@@ -1,7 +1,7 @@
 import type { DataConnection, Peer } from "peerjs";
 import { useNavigate } from "@solidjs/router";
 import { createSignal, onCleanup, onSettled, Show } from "solid-js";
-import SequenceGame from "~/components/SequenceGame";
+import HileraGame from "~/components/HileraGame";
 import GameResultDialog from "~/components/GameResultDialog";
 import TeamAvatar from "~/components/ui/TeamAvatar";
 import {
@@ -217,7 +217,7 @@ export default function ClientRoom(props: { roomId: string }) {
               </Show>
             </div>
           </Show>
-          <SequenceGame
+          <HileraGame
             roomId={props.roomId}
             state={gameState()}
             seat="green"
