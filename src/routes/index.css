@@ -264,7 +264,10 @@
 .landing-marquee {
   position: relative;
   z-index: 1;
-  margin: 0 -1.25rem;
+  /* Match the page's content width instead of bleeding to the viewport
+     edges, so the band lines up with the sections above and below it. */
+  width: min(100%, 72rem);
+  margin: 0 auto;
   overflow: hidden;
   border-block: 3px solid var(--color-ink);
   background: var(--color-brutal-yellow);
@@ -274,11 +277,22 @@
 .landing-marquee-track {
   display: flex;
   width: max-content;
+  /* The loop translates by -50%, so the track must be at least twice the
+     viewport: otherwise a wide screen is wider than the strip and the loop
+     scrolls into empty space. */
+  min-width: 200%;
   animation: landing-marquee 26s linear infinite;
 }
 
 .landing-marquee-group {
   display: flex;
+  align-items: center;
+  /* Grow to fill the track when the items are narrower than the screen, so
+     the strip spans the full width and the items spread evenly instead of
+     bunching at the left. The trailing padding equals the gap, which keeps
+     the seam between the two copies the same width as the gaps inside one. */
+  flex: 1 0 auto;
+  justify-content: space-around;
   gap: 2rem;
   padding: 0.6rem 2rem 0.6rem 0;
   font-family: var(--font-display);
@@ -288,10 +302,10 @@
   white-space: nowrap;
 }
 
-.landing-marquee-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 2rem;
+/* The star is its own flex token, so space-around distributes the same space
+   on both sides of it instead of only between whole items. */
+.landing-marquee-star {
+  flex-shrink: 0;
 }
 
 @keyframes landing-marquee {
@@ -402,36 +416,38 @@
   color: #333333;
 }
 
-.landing-features {
+/* --- Rules ---------------------------------------------------------------- */
+
+.landing-rules {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
 }
 
-.landing-feature {
-  padding: 1.25rem;
+.landing-rule {
+  padding: 1.5rem;
   background: var(--color-base-100);
   border: 3px solid var(--color-ink);
-  border-radius: 0.75rem;
-  box-shadow: 4px 4px 0 var(--color-ink);
+  border-radius: 1rem;
+  box-shadow: 6px 6px 0 var(--color-ink);
 }
 
-.landing-feature-icon {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.landing-feature h3 {
-  margin-top: 0.6rem;
-  font-size: 1rem;
+.landing-rule h3 {
+  font-size: 1.1rem;
   text-transform: uppercase;
 }
 
-.landing-feature p {
-  margin-top: 0.35rem;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: #444444;
+.landing-rule ul {
+  margin-top: 0.75rem;
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.landing-rule li {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #333333;
 }
 
 /* --- Footer --------------------------------------------------------------- */
@@ -512,12 +528,12 @@
     grid-template-columns: 1fr;
   }
 
-  .landing-step {
-    transform: none;
+  .landing-rules {
+    grid-template-columns: 1fr;
   }
 
-  .landing-features {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .landing-step {
+    transform: none;
   }
 }
 
@@ -525,10 +541,6 @@
   .landing-nav-links {
     gap: 0.75rem;
     font-size: 0.7rem;
-  }
-
-  .landing-features {
-    grid-template-columns: 1fr;
   }
 
   .landing-section {

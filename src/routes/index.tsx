@@ -34,26 +34,31 @@ const STEPS = [
   },
 ] as const;
 
-const FEATURES = [
+
+const RULES = [
   {
-    icon: "🔒",
-    title: "Private rooms",
-    body: "Only people with the invite link can join your table.",
+    title: "On your turn",
+    items: [
+      "Play one card and place a chip on a matching board space.",
+      "Draw a replacement — the whole turn is a single move.",
+      "Five chips in a row make a sequence.",
+    ],
   },
   {
-    icon: "⚡",
-    title: "Peer-to-peer",
-    body: "Moves travel directly between browsers over WebRTC.",
+    title: "Special cards",
+    items: [
+      "Two-eyed jacks (♦ ♣) are wild: place a chip on any open space.",
+      "One-eyed jacks (♠ ♥) remove an opponent's chip; chips in a completed sequence are safe.",
+      "A dead card (no legal use) can be swapped once per turn without ending it.",
+    ],
   },
   {
-    icon: "🔁",
-    title: "Instant rematch",
-    body: "One click resets the board for another round.",
-  },
-  {
-    icon: "🛡️",
-    title: "Fair play",
-    body: "The host validates every move before it reaches the board.",
+    title: "Winning",
+    items: [
+      "Line up five chips horizontally, vertically, or diagonally.",
+      "The four corners are free spaces and count for both players.",
+      "Claim two sequences to win; a new one may share at most one chip with an existing sequence.",
+    ],
   },
 ] as const;
 
@@ -161,7 +166,7 @@ export default function Home() {
               </button>
             </div>
             <p class="landing-note">
-              No account · no install
+              No sign-up · no install
             </p>
             <Show when={error()}>
               {(message) => (
@@ -213,10 +218,10 @@ export default function Home() {
               <div class="landing-marquee-group">
                 <For each={MARQUEE_ITEMS}>
                   {(item) => (
-                    <span class="landing-marquee-item">
-                      {item}
-                      <span>✦</span>
-                    </span>
+                    <>
+                      <span class="landing-marquee-item">{item}</span>
+                      <span class="landing-marquee-star">✦</span>
+                    </>
                   )}
                 </For>
               </div>
@@ -229,7 +234,7 @@ export default function Home() {
         <section id="how" class="landing-section">
           <div class="landing-section-head">
             <h2 class="landing-section-title">
-              How it <em>works</em>
+              How to <em>play</em>
             </h2>
             <p class="landing-section-lede">
               Three steps, zero setup. The host tab is the authority — no game
@@ -251,26 +256,30 @@ export default function Home() {
           </div>
         </section>
 
-        <section class="landing-section">
+        <section id="rules" class="landing-section">
           <div class="landing-section-head">
             <h2 class="landing-section-title">
-              What you <em>get</em>
+              How it <em>works</em>
             </h2>
+            <p class="landing-section-lede">
+              Two players, seven cards each. Play a card, place a chip, and race
+              to claim two sequences of five.
+            </p>
           </div>
-          <div class="landing-features">
-            <For each={FEATURES}>
-              {(feature) => (
-                <article class="landing-feature">
-                  <span class="landing-feature-icon" aria-hidden="true">
-                    {feature.icon}
-                  </span>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.body}</p>
+          <div class="landing-rules">
+            <For each={RULES}>
+              {(rule) => (
+                <article class="landing-rule">
+                  <h3>{rule.title}</h3>
+                  <ul>
+                    <For each={rule.items}>{(item) => <li>{item}</li>}</For>
+                  </ul>
                 </article>
               )}
             </For>
           </div>
         </section>
+
       </div>
 
       <footer class="landing-footer">

@@ -1,6 +1,30 @@
 import { Title } from "@solidjs/meta";
+import { For } from "solid-js";
 import { MemphisBackdrop } from "~/components/ui/Memphis";
 import { appPath } from "~/lib/paths";
+
+const FEATURES = [
+  {
+    icon: "🔒",
+    title: "Private rooms",
+    body: "Only people with the invite link can join your table.",
+  },
+  {
+    icon: "⚡",
+    title: "Peer-to-peer",
+    body: "Moves travel directly between browsers over WebRTC.",
+  },
+  {
+    icon: "🔁",
+    title: "Instant rematch",
+    body: "One click resets the board for another round.",
+  },
+  {
+    icon: "🛡️",
+    title: "Fair play",
+    body: "The host validates every move before it reaches the board.",
+  },
+] as const;
 
 export default function About() {
   return (
@@ -20,13 +44,20 @@ export default function About() {
         </p>
 
         <section class="page-card">
-          <h2>How a turn works</h2>
-          <p>
-            A turn is one atomic move: the card you play, the chip you place
-            (or remove with a one-eyed jack), and the mandatory draw all commit
-            together. If a card has no legal use, you may discard it once per
-            turn and draw a replacement without ending your turn.
-          </p>
+          <h2>What you get</h2>
+          <div class="page-features">
+            <For each={FEATURES}>
+              {(feature) => (
+                <article class="page-feature">
+                  <span class="page-feature-icon" aria-hidden="true">
+                    {feature.icon}
+                  </span>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.body}</p>
+                </article>
+              )}
+            </For>
+          </div>
         </section>
 
         <section class="page-card">
@@ -42,6 +73,16 @@ export default function About() {
             <li>PeerJS / WebRTC for peer-to-peer play</li>
             <li>Tailwind CSS + daisyUI, restyled neobrutalist</li>
           </ul>
+        </section>
+
+        <section class="page-card">
+          <h2>How a turn works</h2>
+          <p>
+            A turn is one atomic move: the card you play, the chip you place
+            (or remove with a one-eyed jack), and the mandatory draw all commit
+            together. If a card has no legal use, you may discard it once per
+            turn and draw a replacement without ending your turn.
+          </p>
         </section>
 
         <a class="btn btn-primary mt-8" href={appPath("/")}>
