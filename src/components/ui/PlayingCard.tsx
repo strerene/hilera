@@ -51,11 +51,13 @@ export default function PlayingCard(props: {
 
   return (
     <img
-      class="game-card block h-full w-full select-none object-contain"
-      classList={{
-        "aspect-square": props.variant === "square-small",
-        "aspect-[304/424]": props.variant === "full",
-      }}
+      class={[
+        "game-card block h-full w-full select-none object-contain",
+        {
+          "aspect-square": props.variant === "square-small",
+          "aspect-[304/424]": props.variant === "full",
+        },
+      ]}
       src={src()}
       alt=""
       aria-hidden="true"

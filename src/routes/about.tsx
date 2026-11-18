@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
-import { A } from "@solidjs/router";
 import { MemphisBackdrop } from "~/components/ui/Memphis";
+import { appPath } from "~/lib/paths";
 
 export default function About() {
   return (
@@ -8,9 +8,10 @@ export default function About() {
       <Title>About — Hilera</Title>
       <MemphisBackdrop />
       <div class="page-inner">
-        <A class="page-back" href="/">
+        {/* Base-aware: a bare `href="/"` is outside `/sequence` on GitHub Pages. */}
+        <a class="page-back" href={appPath("/")}>
           ← Back to the game
-        </A>
+        </a>
         <h1 class="page-title">About</h1>
         <p class="mt-6 max-w-2xl text-lg font-medium leading-relaxed">
           Hilera is a two-player card-and-board game. Play a card, place a
@@ -37,15 +38,15 @@ export default function About() {
             over WebRTC, so a room is just a link.
           </p>
           <ul>
-            <li>SolidStart + SolidJS for the UI</li>
+            <li>SolidJS 2 + Solid Router for the UI</li>
             <li>PeerJS / WebRTC for peer-to-peer play</li>
             <li>Tailwind CSS + daisyUI, restyled neobrutalist</li>
           </ul>
         </section>
 
-        <A class="btn btn-primary mt-8" href="/">
+        <a class="btn btn-primary mt-8" href={appPath("/")}>
           Create a room
-        </A>
+        </a>
       </div>
     </main>
   );

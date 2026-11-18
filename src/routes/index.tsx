@@ -1,8 +1,9 @@
 import { Title } from "@solidjs/meta";
-import { A, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { createSignal, For, Show } from "solid-js";
 import PlayingCard from "~/components/ui/PlayingCard";
 import { MemphisBackdrop } from "~/components/ui/Memphis";
+import { appPath } from "~/lib/paths";
 import { createRoom } from "~/lib/p2p";
 import "./index.css";
 
@@ -93,7 +94,7 @@ export default function Home() {
     event.preventDefault();
     const id = extractRoomId(joinId());
     if (!id) return;
-    navigate(`/room?id=${encodeURIComponent(id)}`);
+    navigate(appPath(`/room?id=${encodeURIComponent(id)}`));
   };
 
   const handleCreateRoom = async () => {
@@ -101,7 +102,7 @@ export default function Home() {
     setError(null);
     try {
       const room = await createRoom();
-      navigate(`/room?id=${room.roomId}`);
+      navigate(appPath(`/room?id=${room.roomId}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create room");
       setCreating(false);
@@ -115,15 +116,15 @@ export default function Home() {
 
       <div class="landing-inner">
         <nav class="landing-nav">
-          <A class="landing-logo" href="/">
+          <a class="landing-logo" href={appPath("/")}>
             <span class="landing-logo-mark" aria-hidden="true">
               ✦
             </span>
             Hilera
-          </A>
+          </a>
           <div class="landing-nav-links">
             <a href="#how">How to play</a>
-            <A href="/about">About</A>
+            <a href={appPath("/about")}>About</a>
           </div>
         </nav>
 
@@ -276,9 +277,9 @@ export default function Home() {
         <div class="landing-footer-inner">
           <span class="font-display text-lg uppercase">Hilera</span>
           <p class="text-sm">
-            Built with SolidStart + WebRTC. No game server, no tracking.
+            Built with SolidJS 2 + WebRTC. No game server, no tracking.
           </p>
-          <A href="/about">About the game →</A>
+          <a href={appPath("/about")}>About the game →</a>
         </div>
       </footer>
 

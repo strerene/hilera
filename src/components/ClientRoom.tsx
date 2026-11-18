@@ -1,6 +1,6 @@
 import type { DataConnection, Peer } from "peerjs";
 import { useNavigate } from "@solidjs/router";
-import { batch, createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onSettled, Show } from "solid-js";
 import SequenceGame from "~/components/SequenceGame";
 import GameResultDialog from "~/components/GameResultDialog";
 import TeamAvatar from "~/components/ui/TeamAvatar";
@@ -12,6 +12,7 @@ import {
   type SequenceState,
 } from "~/lib/sequence";
 import { joinRoom, leaveRoom } from "~/lib/p2p";
+import { appPath } from "~/lib/paths";
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
@@ -104,22 +105,17 @@ export default function ClientRoom(props: { roomId: string }) {
       conn.on("data", (raw) => {
         const msg = raw as HostMessage;
         if (msg.type === "start") {
-          batch(() => {
-            setGameState(createInitialState());
-            setHand([]);
-          });
+          setGameState(createInitialState());
+          setHand([]);
         } else if (msg.type === "state") {
           // Any authoritative state proves the channel is alive.
           clearResponseTimer();
           // State + own hand arrive together, so a turn applies in one batch:
           // the hand never renders in its intermediate (one card short) form.
-          // PeerJS callbacks are not Solid event handlers, so the two writes
-          // must be batched explicitly — unbatched they cause two full render
-          // passes per turn.
-          batch(() => {
-            setGameState(msg.state);
-            setHand(msg.hand);
-          });
+          // Solid 2 stages writes and commits them on the next microtask, so
+          // these two writes share one render pass without an explicit batch.
+          setGameState(msg.state);
+          setHand(msg.hand);
         }
       });
       // The host answers every connection with an initial "state" (lobby or
@@ -149,7 +145,7 @@ export default function ClientRoom(props: { roomId: string }) {
     }, RETRY_DELAY_MS);
   };
 
-  onMount(() => {
+  onSettled(() => {
     void connect();
   });
 
@@ -187,7 +183,7 @@ export default function ClientRoom(props: { roomId: string }) {
   // closes the data connection as the component unmounts.
   const leave = () => {
     leaveRoom(props.roomId);
-    navigate("/");
+    navigate(appPath("/"));
   };
 
   // Two-phase layout mirrors HostRoom: a lobby card while waiting for the

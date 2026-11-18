@@ -5,19 +5,20 @@
     "dev": "node scripts/generate-cards.js && vite dev",
     "build": "node scripts/generate-cards.js && vite build",
     "cards:generate": "node scripts/generate-cards.js",
-    "gh-pages:build": "node scripts/generate-cards.js && BASE_PATH=/sequence vite build && test -f .output/public/index.html && cp .output/public/index.html .output/public/404.html && touch .output/public/.nojekyll",
-    "gh-pages:deploy": "bun run gh-pages:build && bunx gh-pages -d .output/public --dotfiles",
-    "start": "node .output/server/index.mjs",
+    "gh-pages:build": "node scripts/generate-cards.js && BASE_PATH=/sequence vite build && test -f dist/client/index.html && test -f dist/client/404.html && touch dist/client/.nojekyll",
+    "gh-pages:deploy": "bun run gh-pages:build && bunx gh-pages -d dist/client --dotfiles",
+    "start": "vite preview",
     "preview": "vite preview",
     "test": "bun test"
   },
   "dependencies": {
-    "@solidjs/meta": "^0.29.8",
-    "@solidjs/router": "^1.0.3",
-    "@solidjs/start": "2.2.2",
-    "nitro": "3.0.260903-beta",
+    "@solidjs/meta": "2.0.0",
+    "@solidjs/router": "2.0.0",
+    "@solidjs/vite-plugin": "3.0.1",
+    "@solidjs/web": "2.0.1",
+    "filesystem-routing": "0.5.0",
     "peerjs": "^1.5.5",
-    "solid-js": "1.9.19",
+    "solid-js": "2.0.1",
     "vite": "^8.3.8"
   },
   "engines": {
@@ -25,7 +26,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.0.0",
     "daisyui": "^5.7.28",
+    "prerender-crawler": "^0.3.0",
     "tailwindcss": "^4.3.3"
   }
 }

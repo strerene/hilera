@@ -1,13 +1,11 @@
 import { Title } from "@solidjs/meta";
-import { A } from "@solidjs/router";
-import { HttpStatusCode } from "@solidjs/start";
 import { MemphisBackdrop } from "~/components/ui/Memphis";
+import { appPath } from "~/lib/paths";
 
 export default function NotFound() {
   return (
     <main class="page">
       <Title>Not Found — Hilera</Title>
-      <HttpStatusCode code={404} />
       <MemphisBackdrop />
       <div class="page-inner flex min-h-[70dvh] flex-col items-start justify-center">
         <span class="badge badge-warning badge-lg font-mono">404</span>
@@ -16,9 +14,9 @@ export default function NotFound() {
           This page doesn't exist. The room may have expired, or the link was
           mistyped.
         </p>
-        <A class="btn btn-primary mt-8" href="/">
+        <a class="btn btn-primary mt-8" href={appPath("/")}>
           Back to the game
-        </A>
+        </a>
       </div>
     </main>
   );

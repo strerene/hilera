@@ -1,27 +1,30 @@
 import { Title } from "@solidjs/meta";
 import { useSearchParams } from "@solidjs/router";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 import ClientRoom from "~/components/ClientRoom";
 import HostRoom from "~/components/HostRoom";
-import { createRoom, getRoom, isHostSession } from "~/lib/p2p";
+import { createRoom, getRoom, isHostSession, type RoomHandle } from "~/lib/p2p";
+import { appPath } from "~/lib/paths";
 
 export default function RoomRoute() {
   const [searchParams] = useSearchParams<{ id?: string }>();
   const roomId = () => searchParams.id ?? "";
-  const [room, setRoom] = createSignal(getRoom());
+  // `undefined` = session not read yet. The room lives in a browser session
+  // (module singleton + sessionStorage), so it cannot be known while the app
+  // renders on the server: the prerendered /room HTML — and the first client
+  // render that hydrates it — show the unresolved branch, and the real one
+  // mounts from onSettled. Keeping this branch free of `roomId` is what makes
+  // one prerendered file correct for every `?id=`.
+  const [room, setRoom] = createSignal<RoomHandle | null | undefined>(undefined);
   const [restoring, setRestoring] = createSignal(false);
   const [failed, setFailed] = createSignal(false);
-  // The page is prerendered without search params, so anything derived from
-  // `roomId` renders empty on the server. Solid hydration never patches text
-  // it claimed from the SSR snapshot, so the room id would stay invisible.
-  // Gate the content behind mount to render it fresh on the client.
-  const [mounted, setMounted] = createSignal(false);
-  onMount(() => setMounted(true));
 
-  onMount(() => {
+  onSettled(() => {
+    const existing = getRoom();
+    setRoom(existing);
     // Reloaded host tab: the in-memory room is gone, but it can be
     // reclaimed under the same peer id so clients reconnect seamlessly.
-    if (roomId() && !room() && isHostSession(roomId())) {
+    if (roomId() && !existing && isHostSession(roomId())) {
       setRestoring(true);
       createRoom(roomId())
         .then((r) => {
@@ -36,14 +39,21 @@ export default function RoomRoute() {
   return (
     <main class="flex min-h-dvh items-center justify-center p-4">
       <Title>Hilera</Title>
-      <Show when={mounted()}>
+      <Show
+        when={room() !== undefined}
+        fallback={
+          <p class="flex items-center gap-2">
+            <span class="loading loading-spinner" /> Loading room…
+          </p>
+        }
+      >
         <Show
           when={!failed()}
           fallback={
             <div class="alert alert-error">
               <span>
                 This room is no longer available.{" "}
-                <a class="link" href="/">Create a new room</a>.
+                <a class="link" href={appPath("/")}>Create a new room</a>.
               </span>
             </div>
           }

@@ -1,8 +1,9 @@
 # Hilera
 
 Two-player online card-and-board game: race to claim two sequences of five.
-Built with [SolidStart](https://start.solidjs.com) and played peer-to-peer in
-the browser over WebRTC (PeerJS) — no game server.
+Built with [SolidJS 2](https://www.solidjs.com), prerendered to static HTML at
+build time and hydrated in the browser, and played peer-to-peer over WebRTC
+(PeerJS). No game server.
 
 ## Styling
 
@@ -56,8 +57,23 @@ bun run dev
 
 ## Building
 
-Solid apps are built with Nitro _presets_, which optimise your project for deployment to different environments.
+`bun run build` emits a static site in `dist/client`. Each page is rendered once
+through the built server handler and written to its own file —
+`index.html`, `about/index.html`, `room/index.html`, and `404.html` — with the
+hashed JS/CSS bundles linked from it. The browser hydrates that markup, so the
+content is in the HTML for crawlers and there is no blank first paint. There is
+no server runtime to deploy.
 
-By default, `npm run build` will generate a Node app under `.output` that you can run with `npm start`. To use a different preset, set it on the `nitro()` plugin in your `vite.config.ts`.
+To publish to GitHub Pages under `/sequence/`, use `bun run gh-pages:deploy`: it
+builds with `BASE_PATH=/sequence` and pushes `dist/client`.
+
+## Rendering model
+
+Routes are file-based: `filesystem-routing` scans `src/routes` into
+`virtual:file-routes`, and `src/router.ts` turns that manifest into Solid Router
+routes with `fileRoutes()`. Routes ship eagerly (`codeSplitting: false`) — one
+bundle, no per-route request. The prerender seeds live in `vite.config.ts`;
+links and navigations inside the app go through `appPath()` so they stay inside
+the deployment base.
 
 ## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)

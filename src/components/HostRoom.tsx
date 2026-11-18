@@ -1,12 +1,11 @@
 import type { DataConnection, Peer } from "peerjs";
 import { useNavigate } from "@solidjs/router";
 import {
-  batch,
   createEffect,
   createSignal,
   For,
   onCleanup,
-  onMount,
+  onSettled,
   Show,
 } from "solid-js";
 import SequenceGame from "~/components/SequenceGame";
@@ -24,6 +23,7 @@ import {
   type SerializedSecrets,
 } from "~/lib/sequence";
 import { leaveRoom } from "~/lib/p2p";
+import { appPath } from "~/lib/paths";
 
 const gameKey = (roomId: string) => `game:${roomId}`;
 
@@ -42,7 +42,7 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   const secrets = new SequenceSecrets();
 
   // Survive the host's own reload within the same tab, and wire up peers.
-  onMount(() => {
+  onSettled(() => {
     const saved = sessionStorage.getItem(gameKey(props.roomId));
     if (saved) {
       try {
@@ -87,12 +87,15 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
 
   // Persist the public state plus the hidden deck/hands so a reloaded host
   // tab can resume the exact game it was running.
-  createEffect(() => {
-    sessionStorage.setItem(
-      gameKey(props.roomId),
-      JSON.stringify({ state: gameState(), secrets: secrets.serialize() }),
-    );
-  });
+  createEffect(
+    () => gameState(),
+    (state) => {
+      sessionStorage.setItem(
+        gameKey(props.roomId),
+        JSON.stringify({ state, secrets: secrets.serialize() }),
+      );
+    },
+  );
 
   const broadcast = (msg: HostMessage) => {
     // A dying channel drops sends silently (peerjs only logs an error event)
@@ -163,11 +166,10 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
 
   /** Adopt a new state, bump hand reactivity, and sync all clients. */
   const publish = (next: SequenceState, announce = false) => {
-    // One batch: state + hand version apply in a single render pass.
-    batch(() => {
-      setGameState(next);
-      setHandVersion((v) => v + 1); // a committed action may have changed hands
-    });
+    // Solid 2 stages both writes and commits them in one microtask batch, so
+    // state + hand version still apply in a single render pass.
+    setGameState(next);
+    setHandVersion((v) => v + 1); // a committed action may have changed hands
     if (announce) broadcast({ type: "start" });
     broadcast({
       type: "state",
@@ -215,13 +217,14 @@ export default function HostRoom(props: { roomId: string; peer: Peer }) {
   const leave = () => {
     sessionStorage.removeItem(gameKey(props.roomId));
     leaveRoom(props.roomId);
-    navigate("/");
+    navigate(appPath("/"));
   };
 
-  // Build the invite link from the current URL so a BASE_PATH deployment
-  // (e.g. GitHub Pages) is handled automatically.
+  // Build the invite link from the deployment base rather than the current
+  // pathname: the host may be sitting on `/sequence/room/` after a redirect, and
+  // the link should be the same tidy URL every time.
   const copyRoomLink = async () => {
-    const link = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(props.roomId)}`;
+    const link = `${window.location.origin}${appPath("/room")}?id=${encodeURIComponent(props.roomId)}`;
     await navigator.clipboard.writeText(link);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);

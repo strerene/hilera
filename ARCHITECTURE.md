@@ -2,19 +2,21 @@
 
 **Hilera** is a two-player online card-and-board game: play a card, place a
 chip on the matching space, and race to claim two sequences of five. It is
-built with [SolidStart](https://start.solidjs.com) and played peer-to-peer in
-the browser via [PeerJS](https://peerjs.com/) (WebRTC data channels). There is
-no game server: one browser tab **hosts** the game and acts as the authority;
+built with [SolidJS 2](https://www.solidjs.com) and
+[Solid Router](https://docs.solidjs.com/solid-router) and played peer-to-peer
+in the browser via [PeerJS](https://peerjs.com/) (WebRTC data channels). There
+is no game server: one browser tab **hosts** the game and acts as the authority;
 the other tab **joins** as a client.
 
 ## Stack
 
 | Layer      | Choice                                             |
 | ---------- | -------------------------------------------------- |
-| UI         | SolidJS 1.9 (`solid-js`, `@solidjs/router`, `@solidjs/meta`) |
-| Framework  | `@solidjs/start` (file-based routing, SSR)         |
+| UI         | SolidJS 2.0 (`solid-js`, `@solidjs/web`, `@solidjs/router`, `@solidjs/meta` 2) |
+| Framework  | `@solidjs/vite-plugin` start mode + `prerender-crawler`: pages rendered at build time, hydrated in the browser; static output, no server runtime |
+| Routing    | `filesystem-routing` → `fileRoutes()` from `@solidjs/router/fs` |
 | Styling    | Tailwind CSS 4 (`@tailwindcss/vite`) + daisyUI 5 (loaded as `@plugin` in `src/app.css`) |
-| Bundler    | Vite 8 + `nitro/vite` (static preset, prerendered) |
+| Bundler    | Vite 8 (single static client bundle in `dist/client`) |
 | Networking | `peerjs` — WebRTC data channels with a public signaling server (configurable via `VITE_PEER_*` env vars) |
 | Runtime    | Node ≥ 24, Bun for scripts/deploy                  |
 
@@ -22,10 +24,10 @@ the other tab **joins** as a client.
 
 ```
 src/
-├── app.tsx                  # Router + MetaProvider shell
+├── App.tsx                  # Application root: router render prop + Title
+├── Document.tsx             # <html> shell (head, fonts, HydrationScript); rendered per page
+├── router.ts                # createRouter(fileRoutes(pageRoutes)), base path
 ├── app.css                  # Tailwind + daisyUI entry (@import / @plugin)
-├── entry-client.tsx         # Client entry
-├── entry-server.tsx         # SSR entry
 ├── routes/
 │   ├── index.tsx            # Home: create room (host) or join (client)
 │   ├── about.tsx            # About page
@@ -143,10 +145,16 @@ publishing (`settleDraws`), so a turn arrives as a single paint.
 
 ## Rendering / persistence
 
-- The app is built as a **static site** (Nitro `static` preset, prerendered
-  `/` and `/about`) — all game logic runs client-side; there is no server
-  runtime. `BASE_PATH` support exists for GitHub Pages deployment
-  (`gh-pages:build` / `gh-pages:deploy` scripts).
+- The app is **prerendered at build time**: `vite build` renders `/`, `/about`,
+  `/room` and a `/404` page through the built server handler and writes the HTML
+  into `dist/client` (`prerender-crawler`, seeded in `vite.config.ts`). The
+  deployed artifact is files only; the browser hydrates the rendered markup.
+  `BASE_PATH` support exists for GitHub Pages (`gh-pages:build` /
+  `gh-pages:deploy`), which is also why prerender seeds are submitted with the
+  base prefix while output filenames stay base-free.
+- Because every page is also rendered on the server once, component bodies must
+  stay free of browser APIs: `routes/room` reads its session in `onSettled` and
+  renders an unresolved branch that matches between server and client.
 - The host persists `{ state, secrets }` to `sessionStorage` on every change,
   so a host tab reload resumes the exact game (and the client reload gets a
   fresh `state` + its hand re-sent on reconnect).

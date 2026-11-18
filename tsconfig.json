@@ -6,11 +6,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "isolatedModules": true,
     "paths": {
       "~/*": ["./src/*"]

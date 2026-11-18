@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import type { BoardCell, Card, ChipColor, SequenceState } from "~/lib/sequence";
 import {
   cardToString,
@@ -38,16 +38,18 @@ function CellView(props: {
   };
   return (
     <div
-      class="seq-cell"
-      classList={{
-        free: props.cell.card === "FREE",
-        legal: props.legal,
-        "sequence-flash": props.sequenceFlash,
-        "last-move": props.lastMoveFlash,
-        interactive: props.interactive,
-      }}
+      class={[
+        "seq-cell",
+        {
+          free: props.cell.card === "FREE",
+          legal: props.legal,
+          "sequence-flash": props.sequenceFlash,
+          "last-move": props.lastMoveFlash,
+          interactive: props.interactive,
+        },
+      ]}
       role={props.interactive ? "button" : undefined}
-      tabIndex={props.interactive ? 0 : -1}
+      tabindex={props.interactive ? 0 : -1}
       aria-label={ariaLabel()}
       aria-disabled={props.interactive ? undefined : "true"}
       onClick={click}
@@ -66,7 +68,7 @@ function CellView(props: {
         {(card) => <PlayingCard card={card} variant="square-small" />}
       </Show>
       <Show when={props.cell.chip} keyed>
-        {(chip) => <span class={`seq-chip ${chip.color}`} classList={{ locked: chip.locked }} />}
+        {(chip) => <span class={["seq-chip", chip.color, { locked: chip.locked }]} />}
       </Show>
     </div>
   );
@@ -86,8 +88,10 @@ function HandCardView(props: {
   return (
     <button
       type="button"
-      class="seq-hand-card"
-      classList={{ selected: props.selected, dead: props.dead, playable: props.clickable }}
+      class={[
+        "seq-hand-card",
+        { selected: props.selected, dead: props.dead, playable: props.clickable },
+      ]}
       disabled={!props.clickable}
       title={
         props.dead
@@ -158,34 +162,32 @@ export default function SequenceGame(props: {
   // per turn) — including our own committed move, since the redrawn hand
   // makes stale selection indices meaningless.
   createEffect(
-    on(
-      () => s().turnNumber,
-      () => setSelected(null),
-      { defer: true },
-    ),
+    () => s().turnNumber,
+    () => {
+      setSelected(null);
+    },
+    { defer: true },
   );
 
   // Flash the chips of newly claimed sequences for a moment. The previous
-  // count is tracked locally and seeded at setup: on()'s prev input is
-  // undefined on the first run after mount, which would silently swallow a
+  // count is tracked locally and seeded at setup: an effect's `prev` argument
+  // is undefined on its first run after mount, which would silently swallow a
   // sequence claimed in the first state update after a (re)connect.
   let prevSequenceCount = s().sequences.length;
   createEffect(
-    on(
-      () => s().sequences.length,
-      (count) => {
-        const prev = prevSequenceCount;
-        prevSequenceCount = count;
-        if (count <= prev) return;
-        const cells = new Set<number>();
-        for (let i = prev; i < count; i++) {
-          for (const c of s().sequences[i].cells) cells.add(c);
-        }
-        setSequenceFlash(cells);
-        clearTimeout(flashTimer);
-        flashTimer = setTimeout(() => setSequenceFlash(new Set<number>()), 2500);
-      },
-    ),
+    () => s().sequences.length,
+    (count) => {
+      const prev = prevSequenceCount;
+      prevSequenceCount = count;
+      if (count <= prev) return;
+      const cells = new Set<number>();
+      for (let i = prev; i < count; i++) {
+        for (const c of s().sequences[i].cells) cells.add(c);
+      }
+      setSequenceFlash(cells);
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => setSequenceFlash(new Set<number>()), 2500);
+    },
   );
   onCleanup(() => {
     clearTimeout(flashTimer);
@@ -207,25 +209,23 @@ export default function SequenceGame(props: {
   // captured at setup so the first update after a (re)connect is comparable.
   let prevBoard = s().board;
   createEffect(
-    on(
-      () => s().board,
-      (board) => {
-        const prev = prevBoard;
-        prevBoard = board;
-        if (prev === board) return;
-        let changed = -1;
-        for (let i = 0; i < board.length; i++) {
-          if (chipChanged(board[i].chip, prev[i].chip)) {
-            if (changed >= 0) return; // more than one cell changed: not a move
-            changed = i;
-          }
+    () => s().board,
+    (board) => {
+      const prev = prevBoard;
+      prevBoard = board;
+      if (prev === board) return;
+      let changed = -1;
+      for (let i = 0; i < board.length; i++) {
+        if (chipChanged(board[i].chip, prev[i].chip)) {
+          if (changed >= 0) return; // more than one cell changed: not a move
+          changed = i;
         }
-        if (changed < 0) return;
-        setLastMoveFlash(changed);
-        clearTimeout(lastMoveTimer);
-        lastMoveTimer = setTimeout(() => setLastMoveFlash(null), 900);
-      },
-    ),
+      }
+      if (changed < 0) return;
+      setLastMoveFlash(changed);
+      clearTimeout(lastMoveTimer);
+      lastMoveTimer = setTimeout(() => setLastMoveFlash(null), 900);
+    },
   );
 
   // The mandatory end-of-turn draw is folded into the host's MOVE commit, so
@@ -330,7 +330,7 @@ export default function SequenceGame(props: {
         <div class="seq-players">
           <For each={props.players}>
             {(player) => (
-              <span class="seq-player" classList={{ offline: !player.connected }}>
+              <span class={["seq-player", { offline: !player.connected }]}>
                 <TeamAvatar color={player.color} label={player.name.charAt(0)} />
                 <span class="seq-player-name">{player.name}</span>
                 <Show when={player.you}>
